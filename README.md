@@ -4,7 +4,7 @@ Public WordPress/WooCommerce plugin for implementing an online EU-style withdraw
 
 The plugin adds a customer-facing withdrawal form, WooCommerce order-aware product selection, guest order lookup, admin request records, multilingual labels, email acknowledgements, proof hash, optional PDF receipt, CSV export, and optional WooCommerce order status update to **Withdrawal requested**.
 
-> Legal note: this plugin helps implement an online withdrawal flow. It is not legal advice. Final wording, eligibility rules, exceptions, and store policies should be reviewed by a qualified legal advisor in the relevant jurisdiction.
+> Legal note: this plugin helps implement an online withdrawal process. It is not legal advice. Final wording, exclusions and refund/return rules should be reviewed by the shop owner's legal advisor for each jurisdiction and product category.
 
 ## Current version
 
@@ -12,106 +12,99 @@ The plugin adds a customer-facing withdrawal form, WooCommerce order-aware produ
 
 ## Main features
 
-- Dedicated withdrawal form shortcode: `[eu_withdrawal_form]`
-- Button/link shortcode: `[eu_withdrawal_button]`
-- Guest lookup by order number and billing email
-- Logged-in customer order prefill from My Account / order email links
-- Product and quantity selection for partial withdrawal
-- Two-step confirmation before submission
-- Admin request records under WooCommerce
-- Workflow statuses: Submitted, In Review, Approved, Rejected, Completed, Refunded
-- Optional WooCommerce order status change to `Withdrawal requested`
-- Email confirmation to the customer
-- Admin notification email
-- Simple PDF receipt attachment
-- SHA-256 proof hash
-- CSV export
-- Multilingual customer-facing labels: English, Greek, Spanish, Hungarian
-- WPML/Polylang-aware language detection and translated page URL handling
-- Minimal/no frontend CSS modes so the plugin can inherit each site's theme styling
+- WooCommerce order-aware withdrawal form.
+- Direct page flow with order number + billing email lookup.
+- Partial withdrawal by product and quantity.
+- Guest customer flow.
+- Two-step confirmation before submission.
+- Eligibility window setting, default 14 days.
+- Allowed order statuses setting.
+- Product/category/product type exclusions.
+- Customer confirmation email.
+- Admin notification email.
+- Admin request records under WooCommerce > Withdrawals.
+- Workflow statuses: Submitted, In Review, Approved, Rejected, Completed, Refunded.
+- Optional WooCommerce order status change to **Withdrawal requested**.
+- SHA-256 proof hash for each request.
+- Basic PDF receipt attachment.
+- CSV export.
+- Multilingual frontend labels: English, Greek, Spanish, Hungarian.
+- WPML/Polylang language detection and WPML config.
+- Minimal frontend CSS with option to inherit theme/WooCommerce styling.
 
 ## Installation
 
-1. Download or clone the repository.
-2. Copy the plugin folder into `wp-content/plugins/`.
-3. Activate **EU Withdrawal Button for WooCommerce** in WordPress admin.
-4. Go to **WooCommerce > Withdrawal Settings**.
-5. Confirm or create the Withdrawal page containing:
+1. Copy this repository folder to `wp-content/plugins/eu-withdrawal-button/`.
+2. Activate **EU Withdrawal Button for WooCommerce** from WordPress admin.
+3. Go to **WooCommerce > Withdrawal Settings**.
+4. Confirm or create the Withdrawal page containing:
+
+   ```text
+   [eu_withdrawal_form]
+   ```
+
+5. Add a visible link to the page in the footer/menu/policy area.
+6. Test order email links, My Account links, direct lookup flow and admin request handling on staging.
+
+## Shortcodes
 
 ```text
 [eu_withdrawal_form]
 ```
 
-6. Add a footer/menu link to the Withdrawal page.
-7. Test logged-in, guest, email-link, and direct-page flows on staging before production.
+Displays the withdrawal flow.
 
-## Recommended page placement
+```text
+[eu_withdrawal_button]
+```
 
-To keep the function clearly visible and easily accessible, add links/buttons in multiple places:
+Displays a theme/WooCommerce-style button linking to the configured withdrawal page.
 
-- Footer/menu link to the Withdrawal page
-- My Account > Orders action button
-- Order details page button
-- WooCommerce order emails link
-- Terms / Returns / Withdrawal Policy page
+## Styling approach
 
-## Styling / CSS
+The plugin should not impose a strong visual design. It should follow the site's WooCommerce/theme CSS as much as possible.
 
-The plugin is designed to avoid imposing its own visual style.
-
-Settings include:
+Relevant setting:
 
 - **Minimal structural CSS, inherit site/theme styles**
 - **No frontend CSS**
 
-Buttons use WooCommerce/theme-friendly classes where possible:
+Buttons should use standard WooCommerce/button classes where possible:
 
 ```text
 woocommerce-button button
 woocommerce-button button alt
 ```
 
-For page builders such as Elementor or Divi, place the shortcode inside a normal page section and style the surrounding page with the theme/builder.
+## WPML / multilingual notes
 
-## Multilingual support
+- Customer-facing languages currently supported: `en`, `el`, `es`, `hu`.
+- Withdrawal Requests should not be translated.
+- Request meta should be copied.
+- `wpml-config.xml` is included.
+- WPML/Polylang translated page URL handling should be tested per site.
 
-Supported customer-facing languages:
+## Development
 
-- English
-- Greek
-- Spanish
-- Hungarian
+Basic syntax check:
 
-The plugin can use:
+```bash
+php -l eu-withdrawal-button.php
+```
 
-- WordPress locale
-- WPML current language
-- Polylang current language
-- Fixed language from plugin settings
+Build plugin zip from repository root:
 
-Withdrawal Requests are intended to remain **not translatable** in WPML. Request metadata should be copied, not translated.
+```bash
+mkdir -p build/eu-withdrawal-button
+cp eu-withdrawal-button.php readme.txt wpml-config.xml build/eu-withdrawal-button/
+cd build
+zip -r eu-withdrawal-button.zip eu-withdrawal-button
+```
 
-## Development notes
-
-This repository includes `AGENTS.md` for Codex and other AI coding agents.
-
-Core rules:
-
-- Preserve WooCommerce compatibility.
-- Keep frontend markup theme-friendly.
-- Do not add heavy CSS unless optional.
-- Keep customer-facing strings translatable/multilingual.
-- Do not remove audit/proof records.
-- Treat legal/compliance wording as configurable and subject to legal review.
-
-## Testing
+## Testing priorities
 
 See [`docs/TESTING.md`](docs/TESTING.md).
 
 ## Roadmap
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md).
-
-## Security
-
-See [`SECURITY.md`](SECURITY.md).

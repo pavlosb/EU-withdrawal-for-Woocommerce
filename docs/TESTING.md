@@ -1,108 +1,97 @@
 # Testing checklist
 
-Use staging first. Do not test with real customer data in public screenshots/issues.
+Use this checklist on a staging WooCommerce site before installing the plugin on production.
 
 ## Environment
 
-Record before testing:
+- WordPress current/stable version.
+- WooCommerce active.
+- Test with at least one default Storefront-like theme and one real client theme/page builder.
+- Test with caching disabled first, then enabled.
+- Test with WPML/Polylang if used by the site.
 
-- WordPress version
-- WooCommerce version
-- PHP version
-- Theme/page builder
-- WPML/Polylang enabled or not
-- Payment/shipping plugins that affect orders
-- Cache plugin/CDN status
+## Activation and settings
 
-## Basic activation
+- Plugin activates without fatal errors.
+- WooCommerce dependency notice works when WooCommerce is inactive.
+- Withdrawal page is created or selectable.
+- `[eu_withdrawal_form]` renders on the selected page.
+- `[eu_withdrawal_button]` links to the selected page.
+- CSS mode works:
+  - Minimal structural CSS.
+  - No frontend CSS.
 
-- Activate plugin without fatal errors.
-- Confirm WooCommerce dependency notice if WooCommerce is inactive.
-- Confirm Withdrawal page exists and contains `[eu_withdrawal_form]`.
-- Confirm settings page exists under WooCommerce > Withdrawal Settings.
-- Run PHP syntax check:
+## Direct page lookup
 
-```bash
-php -l eu-withdrawal-button.php
-```
+- Open the Withdrawal page directly.
+- Form asks for order number and billing email.
+- Wrong order/email combination does not expose products.
+- Correct order/email combination loads order products.
+- Ineligible order shows a clear message.
+- Excluded products are not selectable or are clearly marked.
 
-## Frontend flows
+## Logged-in customer flow
 
-### Logged-in customer from My Account
+- Customer sees withdrawal action in My Account > Orders.
+- Button opens the withdrawal page with the correct order context.
+- Products and quantities are loaded correctly.
+- Partial withdrawal works.
+- Two-step confirmation works.
+- Submission creates exactly one request.
 
-- Create test order for a logged-in customer.
-- Open My Account > Orders.
-- Click Withdrawal / Cancel Contract.
-- Confirm order details and eligible products appear.
-- Select one product and partial quantity.
-- Confirm two-step review screen.
-- Submit.
-- Confirm success message.
-- Confirm customer email received.
-- Confirm admin email received.
-- Confirm Withdrawal Request is visible in admin.
-- Confirm WooCommerce order status changes to Withdrawal requested if enabled.
+## Email flow
 
-### Direct Withdrawal page / guest lookup
+- Order confirmation email contains the withdrawal link when enabled.
+- Customer confirmation email is sent after submission.
+- Admin notification email is sent after submission.
+- Email language matches the frontend language.
+- PDF receipt is attached when enabled.
 
-- Open Withdrawal page directly.
-- Confirm form starts with order number + billing email lookup.
-- Try wrong email and confirm it does not expose products.
-- Try correct order number + billing email.
-- Confirm eligible products load.
-- Submit request.
+## Admin flow
 
-### Order confirmation / order email link
+- Request appears under WooCommerce > Withdrawals.
+- Request details are accurate:
+  - Customer name/email.
+  - Order number.
+  - Products/quantities.
+  - Submitted timestamp.
+  - Language.
+  - Proof hash.
+  - IP/user agent if enabled.
+- Admin can change workflow status.
+- Internal note can be saved.
+- Related WooCommerce order link works.
+- Order notes record relevant status changes.
 
-- Place test order.
-- Open customer order email.
-- Click withdrawal link.
-- Confirm correct language/page URL if WPML/Polylang is active.
-- Confirm products are fetched after verification or token/order context.
+## WooCommerce order status
 
-## Eligibility rules
-
-- Test within default 14-day window.
-- Test outside eligibility window.
-- Test allowed order statuses.
-- Test disabled statuses.
-- Test excluded product IDs.
-- Test excluded categories.
-- Test virtual/downloadable/external products.
-
-## Admin workflow
-
-- Open WooCommerce > Withdrawals.
-- Open a request.
-- Confirm customer/order/product data is visible.
-- Change workflow status to In Review, Approved, Rejected, Completed, Refunded.
-- Add internal note.
-- Confirm WooCommerce order note is created when workflow status changes.
-- Confirm CSV export works.
+- Custom order status **Withdrawal requested** appears in WooCommerce.
+- Optional automatic status change works after submission.
+- Previous order status is stored.
+- Existing order processing/refund workflows are not broken.
 
 ## Multilingual / WPML
 
-- Confirm Withdrawal Requests are not translated.
-- Confirm request meta is copied, not translated.
-- Test English labels.
-- Test Greek labels.
-- Test Spanish labels.
-- Test Hungarian labels.
-- Confirm translated Withdrawal page URLs work.
-- Confirm customer email language matches frontend language.
+- English frontend labels work.
+- Greek frontend labels work.
+- Spanish frontend labels work.
+- Hungarian frontend labels work.
+- WPML language URL resolves to the translated/current language page.
+- Withdrawal Requests are not translatable.
+- Request meta is copied, not translated.
 
-## CSS / theme compatibility
+## CSS/theme compatibility
 
-- Test with Minimal CSS.
-- Test with No frontend CSS.
-- Confirm buttons inherit WooCommerce/theme styling.
-- Confirm layout is acceptable in Elementor/Divi pages.
-- Confirm no plugin CSS breaks product/account/checkout pages.
+- Buttons inherit theme/WooCommerce styling.
+- Inputs inherit theme styling.
+- Layout does not break in Elementor/Divi blocks.
+- No plugin CSS unexpectedly changes global site styles.
+- Mobile layout is usable.
 
 ## Security/privacy
 
-- Confirm nonces are required for submission.
-- Confirm guest lookup requires both order number and billing email.
-- Confirm direct access does not expose order data.
-- Confirm admin actions require proper capability.
-- Confirm no real personal data is committed to repo/issues.
+- Nonces are required for submission.
+- Admin actions require proper capability.
+- Guest lookup does not leak order details without correct email.
+- Stored data is limited to what is necessary for the withdrawal record.
+- CSV export is admin-only.

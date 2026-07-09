@@ -1,25 +1,20 @@
 # Roadmap
 
-## v0.5.0 priorities
+## Near-term
 
-- Refactor the monolithic plugin file into classes under `includes/`.
-- Improve the admin list table and filters.
-- Improve email templates and make all message bodies configurable.
-- Add stronger privacy/export/erase integration for WordPress personal data tools.
-- Expand WPML/Polylang testing.
-- Add automated PHP syntax checks via GitHub Actions.
-- Add optional Elementor/Divi-friendly button/block examples.
+- Split the current single-file plugin into maintainable classes.
+- Add proper admin list table for Withdrawal Requests.
+- Improve PDF receipt generation and template customization.
+- Add customer/admin email templates in settings.
+- Add privacy/export/erase integration for WordPress personal data tools.
+- Add better handling for legal/product exclusions per product category.
+- Add automated CI checks for PHP syntax and WordPress coding standards.
 
-## v1.0.0 target
+## Later
 
-- Stable WooCommerce order/customer flows.
-- Full manual test matrix completed.
-- Clear documentation for legal/policy updates.
-- Production-ready release zip.
-
-## Later ideas
-
-- REST API endpoints for headless stores.
-- Optional reCAPTCHA/hCaptcha integration for guest lookup form.
-- Optional PDF template customization.
-- Export filters by status/date/language.
+- Add REST endpoint for headless/front-end integrations.
+- Add WooCommerce Blocks compatibility testing.
+- Add export/import settings.
+- Add per-language custom labels from admin settings.
+- Add optional webhook on withdrawal submission/status change.
+- Add automated test suite using WP/WooCommerce test utilities.
