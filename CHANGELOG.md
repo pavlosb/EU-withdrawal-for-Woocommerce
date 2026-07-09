@@ -2,6 +2,8 @@
 
 ## 0.4.0 - Testing build
 
+- Fixed withdrawal request emails so customer/admin notifications validate recipients, fall back to the site admin email, continue when PDF receipt generation fails, and log send failures.
+- Added a safe settings-page test email action for checking the configured admin notification recipient.
 - Direct Withdrawal page now starts with order number + billing email lookup.
 - Products are fetched after verified order lookup.
 - Added custom WooCommerce order status: **Withdrawal requested**.
