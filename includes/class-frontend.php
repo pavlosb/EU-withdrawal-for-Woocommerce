@@ -195,11 +195,18 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         $submitted_at=current_time('mysql'); $payload=['order_number'=>$d['order_number'],'email'=>$d['email'],'products'=>$d['products'],'submitted_at'=>$submitted_at,'lang'=>$this->current_lang()]; $hash=hash('sha256', wp_json_encode($payload));
         $post_id=wp_insert_post(['post_type'=>self::CPT,'post_status'=>'publish','post_title'=>sprintf('Withdrawal request - Order %s - %s',$d['order_number'],$d['name'])], true);
         if(is_wp_error($post_id)){ return '<div class="ewb-message">Request could not be saved.</div>'; }
-        $meta=['customer_name'=>$d['name'],'customer_email'=>$d['email'],'order_number'=>$d['order_number'],'order_id'=>$d['order_id'],'products'=>$d['products'],'comments'=>$d['comments'],'submitted_at'=>$submitted_at,'language'=>$this->current_lang(),'ip_address'=>$this->get_ip_address(),'user_agent'=>sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT']??'')),'status'=>'submitted','proof_hash'=>$hash];
+        $meta=['customer_name'=>$d['name'],'customer_email'=>$d['email'],'order_number'=>$d['order_number'],'order_id'=>$d['order_id'],'products'=>$d['products'],'comments'=>$d['comments'],'submitted_at'=>$submitted_at,'language'=>$this->current_lang(),'ip_address'=>$this->get_ip_address(),'user_agent'=>sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT']??'')),'status'=>'submitted','proof_hash'=>$hash,'reference_code'=>$this->reference_code($post_id,$d['order_number'],$submitted_at)];
         foreach($meta as $k=>$v){ update_post_meta($post_id,'_ewb_'.$k,$v); }
         $this->maybe_update_order_status_on_submit($post_id,$meta);
         $this->send_emails($post_id,$meta);
         return '<div class="ewb-message"><strong>'.esc_html($this->t('success_title')).'</strong><br>'.esc_html($this->t('success_text')).'</div>';
+    }
+
+    protected function reference_code(int $post_id,string $order_number,string $submitted_at): string {
+        $order = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', (string)$order_number));
+        if($order === ''){ $order = (string)$post_id; }
+        $date = date('Ymd', strtotime($submitted_at) ?: time());
+        return sprintf('WD-%s-%s-%d', $order, $date, $post_id);
     }
 
     protected function get_ip_address(): string { foreach(['HTTP_CF_CONNECTING_IP','HTTP_X_FORWARDED_FOR','REMOTE_ADDR'] as $key){ if(!empty($_SERVER[$key])){ $raw=sanitize_text_field(wp_unslash($_SERVER[$key])); return trim(explode(',',$raw)[0]); } } return ''; }

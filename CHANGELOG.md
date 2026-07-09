@@ -2,6 +2,9 @@
 
 ## 0.5.0 - Testing build
 
+- Updated withdrawal emails to use the WooCommerce configured sender where available.
+- Added customer-friendly reference codes for email/PDF receipts while preserving the internal proof hash for admin audit details.
+- Skipped the simple PDF receipt attachment for Unicode text that the built-in PDF generator cannot safely render, leaving the HTML email receipt as the customer-facing fallback.
 - Refactored the monolithic plugin file into focused include classes under `includes/`.
 - Kept the main plugin file as a bootstrap that loads the class files and registers activation/deactivation hooks.
 - Preserved existing shortcodes, settings, CPT/meta keys, WooCommerce hooks, multilingual labels, PDF receipts, and email behavior.
