@@ -5,12 +5,14 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
     public function enqueue_styles(): void {
         $mode = $this->get_settings()['css_mode'];
         if ($mode === 'none') { return; }
-        $css = '.ewb-form{max-width:var(--ewb-form-max-width,760px)}.ewb-form .ewb-field{margin-block:1rem}.ewb-form label{display:block;margin-bottom:.35rem}.ewb-form input[type=text],.ewb-form input[type=email],.ewb-form input[type=number],.ewb-form textarea,.ewb-form select{width:100%;max-width:100%;box-sizing:border-box}.ewb-form fieldset{margin:1rem 0}.ewb-form .ewb-item{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,130px);gap:1rem;align-items:center;margin:.65rem 0}.ewb-message{margin:1rem 0}.ewb-actions{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}.ewb-muted{opacity:.75}';
+        $css = '.ewb-form-wrap{max-width:var(--ewb-form-max-width,760px);margin-inline:auto;text-align:center}.ewb-form{max-width:100%;margin-inline:auto;text-align:start}.ewb-form .ewb-field{margin-block:1rem}.ewb-form label{display:block;margin-bottom:.35rem}.ewb-form input[type=text],.ewb-form input[type=email],.ewb-form input[type=number],.ewb-form textarea,.ewb-form select{width:100%;max-width:100%;box-sizing:border-box}.ewb-form fieldset{margin:1rem 0}.ewb-form .ewb-item{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,130px);gap:1rem;align-items:center;margin:.65rem 0}.ewb-form-heading,.ewb-form-intro,.ewb-form-helper,.ewb-message{text-align:center}.ewb-message{margin:1rem 0}.ewb-actions{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center;justify-content:center}.ewb-muted{opacity:.75}';
         wp_register_style('ewb-inline', false, [], self::VERSION); wp_enqueue_style('ewb-inline'); wp_add_inline_style('ewb-inline', $css);
     }
 
     protected function button_label(): string { $s=$this->get_settings(); return $s['button_label_override'] ?: $this->t('button_label'); }
     protected function button_classes(string $context,string $extra=''): string { return $this->frontend_button_classes($context, trim('woocommerce-button button '.$extra)); }
+    protected function render_form_heading(): void { if($this->get_settings()['hide_form_heading']!=='yes'){ echo '<h2 class="ewb-form-heading">'.esc_html($this->t('form_title')).'</h2>'; } }
+    protected function render_form_helper_text(string $position): void { $text=$this->form_helper_text($position); if($text!==''){ echo '<div class="ewb-form-helper ewb-form-helper-'.esc_attr($position).'">'.wp_kses_post(wpautop($text)).'</div>'; } }
     protected function translated_page_id(int $page_id): int {
         if (!$page_id) { return 0; }
         $lang = $this->current_lang();
@@ -65,7 +67,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
     }
 
     public function shortcode_form(): string {
-        if(!class_exists('WooCommerce')){ return '<div class="ewb-message">WooCommerce is required.</div>'; }
+        if(!class_exists('WooCommerce')){ ob_start(); echo '<div class="ewb-form-wrap">'; $this->render_form_heading(); echo '<div class="ewb-message">WooCommerce is required.</div></div>'; return ob_get_clean(); }
         $message='';
         $render_form = true;
         $order=$this->resolve_order_from_request();
@@ -85,8 +87,13 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         }
 
         ob_start();
+        echo '<div class="ewb-form-wrap">';
+        $this->render_form_heading();
+        $this->render_form_helper_text('before');
         echo $message;
         if($render_form){ $this->render_form($order); }
+        $this->render_form_helper_text('after');
+        echo '</div>';
         return ob_get_clean();
     }
 
@@ -95,7 +102,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         $num = sanitize_text_field(wp_unslash($_POST['ewb_order_number'] ?? ''));
         echo '<form class="ewb-form ewb-lookup-form" method="post">';
         wp_nonce_field(self::NONCE_ACTION,'ewb_nonce');
-        echo '<h2>'.esc_html($this->t('form_title')).'</h2><p>'.esc_html($this->t('lookup_intro')).'</p>';
+        echo '<p class="ewb-form-intro">'.esc_html($this->t('lookup_intro')).'</p>';
         echo '<div class="ewb-field"><label for="ewb_order_number">'.esc_html($this->t('order_number')).' *</label><input type="text" id="ewb_order_number" name="ewb_order_number" required value="'.esc_attr($num).'"></div>';
         echo '<div class="ewb-field"><label for="ewb_customer_email">'.esc_html($this->t('email')).' *</label><input type="email" id="ewb_customer_email" name="ewb_customer_email" required value="'.esc_attr($email).'"></div>';
         echo '<div class="ewb-actions"><button type="submit" class="'.esc_attr($this->button_classes('lookup_submit')).'" name="ewb_lookup" value="1">'.esc_html($this->t('lookup')).'</button></div>';
@@ -114,7 +121,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
             $num=$order->get_order_number();
         }
         echo '<form class="ewb-form" method="post">'; wp_nonce_field(self::NONCE_ACTION,'ewb_nonce');
-        echo '<h2>'.esc_html($this->t('form_title')).'</h2><p>'.esc_html($this->t('form_intro')).'</p>';
+        echo '<p class="ewb-form-intro">'.esc_html($this->t('form_intro')).'</p>';
         echo '<div class="ewb-field"><label for="ewb_customer_name">'.esc_html($this->t('full_name')).' *</label><input type="text" id="ewb_customer_name" name="ewb_customer_name" required value="'.esc_attr($name).'"></div>';
         echo '<div class="ewb-field"><label for="ewb_customer_email">'.esc_html($this->t('email')).' *</label><input type="email" id="ewb_customer_email" name="ewb_customer_email" required value="'.esc_attr($email).'"></div>';
         echo '<div class="ewb-field"><label for="ewb_order_number">'.esc_html($this->t('order_number')).' *</label><input type="text" id="ewb_order_number" name="ewb_order_number" required value="'.esc_attr($num).'"></div>';

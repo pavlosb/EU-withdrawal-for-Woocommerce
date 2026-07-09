@@ -20,6 +20,9 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'exclude_downloadable' => 'no',
             'exclude_external' => 'yes',
             'button_label_override' => '',
+            'hide_form_heading' => 'no',
+            'before_form_text' => '',
+            'after_form_text' => '',
             'change_order_status_on_submit' => 'yes',
             'button_class_order_details' => '',
             'button_class_shortcode_button' => '',
@@ -88,6 +91,43 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         return $this->custom_button_classes($context, $base_classes);
     }
 
+    protected static function sanitize_helper_text($value): string {
+        return wp_kses_post((string)$value);
+    }
+
+    protected function default_form_helper_text(string $position): string {
+        $texts = [
+            'en' => [
+                'before' => 'You can submit an electronic withdrawal / contract cancellation request for eligible orders. The right of withdrawal is usually exercised within 14 days, in accordance with applicable law and the store policy.',
+                'after' => 'After submitting the request, you will receive an email confirmation and further information about the next steps for product return and refund processing.',
+            ],
+            'el' => [
+                'before' => 'Μπορείτε να υποβάλετε ηλεκτρονικά αίτημα υπαναχώρησης / ακύρωσης σύμβασης για επιλέξιμες παραγγελίες. Το δικαίωμα υπαναχώρησης ασκείται συνήθως εντός 14 ημερών, σύμφωνα με την ισχύουσα νομοθεσία και την πολιτική του καταστήματος.',
+                'after' => 'Μετά την υποβολή του αιτήματος θα λάβετε επιβεβαίωση μέσω email και νεότερη ενημέρωση για τα επόμενα βήματα επιστροφής προϊόντων και επιστροφής χρημάτων.',
+            ],
+            'es' => [
+                'before' => 'Puede enviar una solicitud electrónica de desistimiento / cancelación de contrato para pedidos elegibles. El derecho de desistimiento suele ejercerse dentro de 14 días, de acuerdo con la legislación aplicable y la política de la tienda.',
+                'after' => 'Después de enviar la solicitud, recibirá una confirmación por email y más información sobre los próximos pasos para la devolución de productos y el procesamiento del reembolso.',
+            ],
+            'hu' => [
+                'before' => 'Elektronikusan elállási / szerződésmegszüntetési kérelmet nyújthat be a jogosult rendelésekhez. Az elállási jog általában 14 napon belül gyakorolható, az alkalmazandó jog és az áruház szabályzata szerint.',
+                'after' => 'A kérelem beküldése után emailes visszaigazolást és további tájékoztatást kap a termék-visszaküldés és a visszatérítés következő lépéseiről.',
+            ],
+        ];
+        $lang = $this->current_lang();
+        return $texts[$lang][$position] ?? $texts['en'][$position] ?? '';
+    }
+
+    protected function form_helper_text(string $position): string {
+        $settings = $this->get_settings();
+        $key = $position === 'after' ? 'after_form_text' : 'before_form_text';
+        $text = trim((string)($settings[$key] ?? ''));
+        if($text === ''){
+            $text = $this->default_form_helper_text($position);
+        }
+        return self::sanitize_helper_text($text);
+    }
+
     public function sanitize_settings($input): array {
         $d = self::default_settings_static();
         $lang = sanitize_text_field($input['language'] ?? 'auto'); if (!in_array($lang, ['auto','en','el','es','hu'], true)) { $lang='auto'; }
@@ -113,6 +153,9 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'exclude_downloadable'=>!empty($input['exclude_downloadable'])?'yes':'no',
             'exclude_external'=>!empty($input['exclude_external'])?'yes':'no',
             'button_label_override'=>sanitize_text_field($input['button_label_override'] ?? ''),
+            'hide_form_heading'=>!empty($input['hide_form_heading'])?'yes':'no',
+            'before_form_text'=>self::sanitize_helper_text(wp_unslash($input['before_form_text'] ?? '')),
+            'after_form_text'=>self::sanitize_helper_text(wp_unslash($input['after_form_text'] ?? '')),
             'change_order_status_on_submit'=>!empty($input['change_order_status_on_submit'])?'yes':'no',
         ];
         foreach(self::custom_button_class_fields() as $key=>$label){
@@ -136,6 +179,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         <tr><th>Admin notification email</th><td><input type="email" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[admin_email]" value="<?php echo esc_attr($s['admin_email']); ?>"></td></tr>
         <tr><th>Frontend language</th><td><select name="<?php echo esc_attr(self::OPTION_KEY); ?>[language]"><option value="auto" <?php selected($s['language'],'auto'); ?>>Auto-detect WPML/Polylang/site locale</option><?php foreach(['en','el','es','hu'] as $l){ echo '<option value="'.esc_attr($l).'" '.selected($s['language'],$l,false).'>'.esc_html($trans[$l]['language_name']).' ('.esc_html($l).')</option>'; } ?></select></td></tr>
         <tr><th>Button label override</th><td><input type="text" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[button_label_override]" value="<?php echo esc_attr($s['button_label_override']); ?>"><p class="description">Leave empty to use translated label.</p></td></tr>
+        <tr><th>Form display and helper text</th><td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[hide_form_heading]" value="yes" <?php checked($s['hide_form_heading'],'yes'); ?>> Hide plugin form heading</label><p class="description">Use this if your page/theme already displays a suitable page heading.</p><p><label>Before form text<br><textarea class="large-text" rows="4" name="<?php echo esc_attr(self::OPTION_KEY); ?>[before_form_text]" placeholder="<?php echo esc_attr($this->default_form_helper_text('before')); ?>"><?php echo esc_textarea($s['before_form_text'] ?? ''); ?></textarea></label></p><p class="description">Shown above the withdrawal form. Leave empty to use the localized default helper text.</p><p><label>After form text<br><textarea class="large-text" rows="4" name="<?php echo esc_attr(self::OPTION_KEY); ?>[after_form_text]" placeholder="<?php echo esc_attr($this->default_form_helper_text('after')); ?>"><?php echo esc_textarea($s['after_form_text'] ?? ''); ?></textarea></label></p><p class="description">Shown below the withdrawal form. Basic safe formatting is allowed; scripts and unsafe HTML are stripped.</p></td></tr>
         <tr><th>Custom button classes</th><td><p class="description">Optional CSS classes are appended after the default WooCommerce/WordPress button classes. Use class names only; HTML, scripts, inline styles, and attributes are stripped.</p><?php foreach(self::custom_button_class_fields() as $key=>$label){ echo '<p><label>'.esc_html($label).'<br><input type="text" class="regular-text" name="'.esc_attr(self::OPTION_KEY).'['.esc_attr($key).']" value="'.esc_attr($s[$key] ?? '').'" placeholder="my-custom-class"></label></p>'; } ?><p class="description">My Account &gt; Orders action classes are generated by the WooCommerce account orders template, so the plugin leaves those default template classes unchanged.</p></td></tr>
         <tr><th>Eligibility window</th><td><input type="number" min="0" step="1" name="<?php echo esc_attr(self::OPTION_KEY); ?>[eligibility_days]" value="<?php echo esc_attr($s['eligibility_days']); ?>"> days <p class="description">0 disables date limit. Default EU withdrawal period is commonly 14 days; confirm legal wording with counsel.</p></td></tr>
         <tr><th>Allowed order statuses</th><td><?php foreach(wc_get_order_statuses() as $key=>$label){ $key=str_replace('wc-','',$key); echo '<label style="display:block"><input type="checkbox" name="'.esc_attr(self::OPTION_KEY).'[allowed_statuses][]" value="'.esc_attr($key).'" '.checked(in_array($key,(array)$s['allowed_statuses'],true),true,false).'> '.esc_html($label).'</label>'; } ?></td></tr>
