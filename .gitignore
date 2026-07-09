@@ -1,0 +1,22 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Dependencies/builds
+vendor/
+node_modules/
+build/
+dist/
+*.zip
+
+# WordPress local/dev
+wp-config.php
+wp-content/uploads/
+wp-content/cache/
+
+# Logs/temp
+*.log
+*.tmp
