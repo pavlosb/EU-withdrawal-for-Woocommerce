@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 - Testing build
+
+- Refactored the monolithic plugin file into focused include classes under `includes/`.
+- Kept the main plugin file as a bootstrap that loads the class files and registers activation/deactivation hooks.
+- Preserved existing shortcodes, settings, CPT/meta keys, WooCommerce hooks, multilingual labels, PDF receipts, and email behavior.
+
 ## 0.4.0 - Testing build
 
 - Fixed withdrawal request emails so customer/admin notifications validate recipients, fall back to the site admin email, continue when PDF receipt generation fails, and log send failures.

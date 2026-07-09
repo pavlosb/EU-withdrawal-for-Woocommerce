@@ -8,7 +8,7 @@ The plugin adds a customer-facing withdrawal form, WooCommerce order-aware produ
 
 ## Current version
 
-`0.4.0` testing build.
+`0.5.0` testing build.
 
 ## Main features
 
@@ -97,6 +97,7 @@ Build plugin zip from repository root:
 ```bash
 mkdir -p build/eu-withdrawal-button
 cp eu-withdrawal-button.php readme.txt wpml-config.xml build/eu-withdrawal-button/
+cp -R includes build/eu-withdrawal-button/
 cd build
 zip -r eu-withdrawal-button.zip eu-withdrawal-button
 ```
