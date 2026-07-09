@@ -41,6 +41,7 @@ final class EU_Withdrawal_Button_Plugin {
         add_action('admin_menu', [$this, 'admin_menu']);
         add_action('admin_init', [$this, 'register_settings']);
         add_action('admin_post_ewb_export_csv', [$this, 'export_csv']);
+        add_action('admin_post_ewb_send_test_email', [$this, 'send_test_email']);
         add_filter('manage_' . self::CPT . '_posts_columns', [$this, 'admin_columns']);
         add_action('manage_' . self::CPT . '_posts_custom_column', [$this, 'admin_column_content'], 10, 2);
         add_filter('manage_edit-' . self::CPT . '_sortable_columns', [$this, 'sortable_columns']);
@@ -220,8 +221,10 @@ final class EU_Withdrawal_Button_Plugin {
         $s=$this->get_settings(); $pages=get_pages(['sort_column'=>'post_title']); $trans=$this->translations(); $cats=get_terms(['taxonomy'=>'product_cat','hide_empty'=>false]);
         ?>
         <div class="wrap"><h1>EU Withdrawal Button Settings</h1>
+        <?php if(isset($_GET['ewb_test_email'])){ $sent = sanitize_key(wp_unslash($_GET['ewb_test_email'])) === 'sent'; echo '<div class="notice notice-'.($sent ? 'success' : 'error').'"><p>'.esc_html($sent ? 'Test email sent.' : 'Test email could not be sent. Check the WooCommerce order notes/debug log or mail server configuration.').'</p></div>'; } ?>
         <p>Shortcodes: <code>[eu_withdrawal_form]</code> and <code>[eu_withdrawal_button]</code>. The frontend CSS is deliberately minimal so buttons/inputs inherit the active theme styling.</p>
         <p><a class="button" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_export_csv&_wpnonce='.wp_create_nonce('ewb_export_csv'))); ?>">Export withdrawal requests CSV</a></p>
+        <p><a class="button" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_send_test_email&_wpnonce='.wp_create_nonce('ewb_send_test_email'))); ?>">Send test email</a></p>
         <form method="post" action="options.php"><?php settings_fields('ewb_settings_group'); ?>
         <table class="form-table" role="presentation">
         <tr><th>Withdrawal page</th><td><select name="<?php echo esc_attr(self::OPTION_KEY); ?>[page_id]"><option value="0">— Select page —</option><?php foreach($pages as $p){ echo '<option value="'.esc_attr($p->ID).'" '.selected((int)$s['page_id'],(int)$p->ID,false).'>'.esc_html($p->post_title).'</option>'; } ?></select></td></tr>
@@ -469,12 +472,83 @@ final class EU_Withdrawal_Button_Plugin {
     private function get_ip_address(): string { foreach(['HTTP_CF_CONNECTING_IP','HTTP_X_FORWARDED_FOR','REMOTE_ADDR'] as $key){ if(!empty($_SERVER[$key])){ $raw=sanitize_text_field(wp_unslash($_SERVER[$key])); return trim(explode(',',$raw)[0]); } } return ''; }
 
     private function email_body(int $post_id,array $m): string { $products='<ul><li>'.implode('</li><li>',array_map('esc_html',(array)$m['products'])).'</li></ul>'; $body='<p>'.esc_html($this->t('received_body')).'</p><p><strong>'.esc_html($this->t('request_id')).':</strong> #'.esc_html($post_id).'<br><strong>'.esc_html($this->t('proof_hash')).':</strong> '.esc_html($m['proof_hash']).'<br><strong>'.esc_html($this->t('name')).':</strong> '.esc_html($m['customer_name']).'<br><strong>'.esc_html($this->t('email')).':</strong> '.esc_html($m['customer_email']).'<br><strong>'.esc_html($this->t('order')).':</strong> '.esc_html($m['order_number']).'<br><strong>'.esc_html($this->t('submitted_at')).':</strong> '.esc_html($m['submitted_at']).'</p><p><strong>'.esc_html($this->t('products')).':</strong></p>'.$products.'<p><strong>'.esc_html($this->t('declaration_label')).':</strong><br>'.esc_html($this->t('declaration')).'</p>'; if(!empty($m['comments'])){ $body.='<p><strong>'.esc_html($this->t('comments')).':</strong><br>'.nl2br(esc_html($m['comments'])).'</p>'; } return $body.'<p>'.esc_html($this->t('next_steps')).'</p>'; }
-    private function send_emails(int $post_id,array $meta): void { $headers=['Content-Type: text/html; charset=UTF-8']; $body=$this->email_body($post_id,$meta); $attachments=[]; if($this->get_settings()['attach_pdf_receipt']==='yes'){ $pdf=$this->create_pdf_receipt($post_id,$meta); if($pdf){ $attachments[]=$pdf; } } wp_mail($meta['customer_email'],$this->t('email_subject'),$body,$headers,$attachments); $s=$this->get_settings(); $admin=$body.'<p><a href="'.esc_url(admin_url('post.php?post='.$post_id.'&action=edit')).'">'.esc_html($this->t('view_admin')).'</a></p>'; wp_mail($s['admin_email'],$this->t('admin_new_subject').' '.$meta['order_number'],$admin,$headers); }
+
+    private function get_admin_email_recipient(): string {
+        $s = $this->get_settings();
+        $admin = sanitize_email($s['admin_email'] ?? '');
+        if(!$admin || !is_email($admin)){ $admin = sanitize_email(get_option('admin_email')); }
+        return is_email($admin) ? $admin : '';
+    }
+
+    private function add_email_failure_note(int $post_id,string $recipient_type,string $recipient,string $message): void {
+        $message = sprintf('Withdrawal request #%d %s email failed for %s: %s', $post_id, $recipient_type, $recipient ?: 'no valid recipient', $message);
+        add_post_meta($post_id, '_ewb_email_error', $message);
+        $order_id = (int)get_post_meta($post_id, '_ewb_order_id', true);
+        $order = $order_id ? wc_get_order($order_id) : false;
+        if($order instanceof WC_Order){ $order->add_order_note($message); }
+        if(defined('WP_DEBUG') && WP_DEBUG){ error_log('[EU Withdrawal Button] '.$message); }
+    }
+
+    private function send_emails(int $post_id,array $meta): void {
+        update_post_meta($post_id, '_ewb_email_attempted_at', current_time('mysql'));
+        $headers = ['Content-Type: text/html; charset=UTF-8'];
+        $body = $this->email_body($post_id,$meta);
+        $attachments = [];
+
+        if($this->get_settings()['attach_pdf_receipt']==='yes'){
+            try {
+                $pdf = $this->create_pdf_receipt($post_id,$meta);
+                if($pdf && file_exists($pdf)){ $attachments[] = $pdf; }
+            } catch (Throwable $e) {
+                $this->add_email_failure_note($post_id, 'PDF receipt', '', $e->getMessage());
+            }
+        }
+
+        $this->send_customer_email($post_id, $meta, $body, $headers, $attachments);
+        $this->send_admin_email($post_id, $meta, $body, $headers);
+    }
+
+    private function send_customer_email(int $post_id,array $meta,string $body,array $headers,array $attachments): void {
+        $customer_email = sanitize_email($meta['customer_email'] ?? '');
+        if($customer_email && is_email($customer_email)){
+            $customer_sent = wp_mail($customer_email, $this->t('email_subject'), $body, $headers, $attachments);
+            update_post_meta($post_id, '_ewb_customer_email_sent', $customer_sent ? 'yes' : 'no');
+            if(!$customer_sent){ $this->add_email_failure_note($post_id, 'customer', $customer_email, 'wp_mail returned false'); }
+        } else {
+            update_post_meta($post_id, '_ewb_customer_email_sent', 'no');
+            $this->add_email_failure_note($post_id, 'customer', $customer_email, 'invalid recipient');
+        }
+    }
+
+    private function send_admin_email(int $post_id,array $meta,string $body,array $headers): void {
+        $admin_email = $this->get_admin_email_recipient();
+        $admin = $body.'<p><a href="'.esc_url(admin_url('post.php?post='.$post_id.'&action=edit')).'">'.esc_html($this->t('view_admin')).'</a></p>';
+        if($admin_email){
+            $admin_sent = wp_mail($admin_email, $this->t('admin_new_subject').' '.$meta['order_number'], $admin, $headers);
+            update_post_meta($post_id, '_ewb_admin_email_sent', $admin_sent ? 'yes' : 'no');
+            if(!$admin_sent){ $this->add_email_failure_note($post_id, 'admin', $admin_email, 'wp_mail returned false'); }
+        } else {
+            update_post_meta($post_id, '_ewb_admin_email_sent', 'no');
+            $this->add_email_failure_note($post_id, 'admin', '', 'invalid recipient');
+        }
+    }
+
+    public function send_test_email(): void {
+        if(!current_user_can('manage_woocommerce') || !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce']??'')),'ewb_send_test_email')){ wp_die('Forbidden'); }
+        $recipient = $this->get_admin_email_recipient();
+        $sent = false;
+        if($recipient){
+            $sent = wp_mail($recipient, 'EU Withdrawal Button test email', '<p>This is a test email from EU Withdrawal Button for WooCommerce.</p>', ['Content-Type: text/html; charset=UTF-8']);
+        }
+        if(!$sent && defined('WP_DEBUG') && WP_DEBUG){ error_log('[EU Withdrawal Button] Test email failed for '.($recipient ?: 'no valid recipient')); }
+        wp_safe_redirect(add_query_arg('ewb_test_email', $sent ? 'sent' : 'failed', admin_url('admin.php?page=ewb-settings')));
+        exit;
+    }
 
     private function create_pdf_receipt(int $post_id,array $m): string {
         $upload=wp_upload_dir(); if(!empty($upload['error'])){ return ''; } $dir=trailingslashit($upload['basedir']).'ewb-receipts'; if(!wp_mkdir_p($dir)){ return ''; }
         $lines=[ $this->t('email_subject'), $this->t('request_id').': #'.$post_id, $this->t('proof_hash').': '.$m['proof_hash'], $this->t('name').': '.$m['customer_name'], $this->t('email').': '.$m['customer_email'], $this->t('order').': '.$m['order_number'], $this->t('submitted_at').': '.$m['submitted_at'], $this->t('products').': '.implode('; ',(array)$m['products']), $this->t('declaration_label').': '.$this->t('declaration') ];
-        $text=implode("\n", array_map([$this,'pdf_sanitize'], $lines)); $content=$this->simple_pdf($text); $path=$dir.'/withdrawal-receipt-'.$post_id.'.pdf'; file_put_contents($path,$content); return $path;
+        $text=implode("\n", array_map([$this,'pdf_sanitize'], $lines)); $content=$this->simple_pdf($text); $path=$dir.'/withdrawal-receipt-'.$post_id.'.pdf'; return @file_put_contents($path,$content) === false ? '' : $path;
     }
     private function pdf_sanitize($s): string { $s=wp_strip_all_tags((string)$s); $map=['€'=>'EUR','–'=>'-','—'=>'-','“'=>'"','”'=>'"','’'=>"'"]; $s=strtr($s,$map); return function_exists('iconv') ? @iconv('UTF-8','ISO-8859-1//TRANSLIT//IGNORE',$s) ?: $s : $s; }
     private function simple_pdf(string $text): string { $text=str_replace(["\\","(",")"],["\\\\","\\(","\\)"],$text); $rows=explode("\n",wordwrap($text,92,"\n")); $stream="BT /F1 10 Tf 50 790 Td 14 TL "; foreach($rows as $row){ $stream.='('.$row.') Tj T* '; } $stream.='ET'; $objs=[]; $objs[]='1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj'; $objs[]='2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj'; $objs[]='3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj'; $objs[]='4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj'; $objs[]='5 0 obj << /Length '.strlen($stream).' >> stream' . "\n" . $stream . "\nendstream endobj"; $pdf="%PDF-1.4\n"; $xref=[]; foreach($objs as $o){ $xref[]=strlen($pdf); $pdf.=$o."\n"; } $start=strlen($pdf); $pdf.="xref\n0 ".(count($objs)+1)."\n0000000000 65535 f \n"; foreach($xref as $x){ $pdf.=sprintf('%010d 00000 n ', $x)."\n"; } $pdf.='trailer << /Size '.(count($objs)+1).' /Root 1 0 R >>' . "\nstartxref\n$start\n%%EOF"; return $pdf; }
