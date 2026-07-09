@@ -1,0 +1,18 @@
+<wpml-config>
+  <custom-types>
+    <custom-type translate="0">ewb_withdrawal</custom-type>
+  </custom-types>
+  <custom-fields>
+    <custom-field action="copy">_ewb_customer_name</custom-field>
+    <custom-field action="copy">_ewb_customer_email</custom-field>
+    <custom-field action="copy">_ewb_order_number</custom-field>
+    <custom-field action="copy">_ewb_order_id</custom-field>
+    <custom-field action="copy">_ewb_products</custom-field>
+    <custom-field action="copy">_ewb_comments</custom-field>
+    <custom-field action="copy">_ewb_submitted_at</custom-field>
+    <custom-field action="copy">_ewb_language</custom-field>
+    <custom-field action="copy">_ewb_status</custom-field>
+    <custom-field action="copy">_ewb_proof_hash</custom-field>
+    <custom-field action="copy">_ewb_previous_order_status</custom-field>
+  </custom-fields>
+</wpml-config>
