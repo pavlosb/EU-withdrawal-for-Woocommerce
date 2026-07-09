@@ -1,0 +1,40 @@
+# Changelog
+
+## 0.4.0 - Testing build
+
+- Direct Withdrawal page now starts with order number + billing email lookup.
+- Products are fetched after verified order lookup.
+- Added custom WooCommerce order status: **Withdrawal requested**.
+- Added optional automatic order status change after withdrawal submission.
+- Added request workflow status handling and internal note support.
+- Improved standard WooCommerce/theme button classes.
+- Reduced plugin CSS so frontend can inherit site styles.
+- Added WPML config and non-translatable Withdrawal Requests setup.
+
+## 0.3.0 - Testing build
+
+- Added two-step confirmation.
+- Added partial withdrawal quantities.
+- Added guest order lookup.
+- Added eligibility window and allowed order statuses.
+- Added product, category and product type exclusions.
+- Added admin workflow statuses.
+- Added SHA-256 proof hash.
+- Added basic PDF receipt.
+- Added CSV export.
+- Added `[eu_withdrawal_button]` shortcode.
+
+## 0.2.0 - Testing build
+
+- Added multilingual frontend labels and emails.
+- Added English, Greek, Spanish and Hungarian support.
+- Added WPML/Polylang language detection.
+- Stored request language in admin records.
+
+## 0.1.0 - Initial draft
+
+- Added dedicated withdrawal page/shortcode.
+- Added My Account/order action links.
+- Added customer confirmation email.
+- Added admin notification.
+- Added basic admin request records.
