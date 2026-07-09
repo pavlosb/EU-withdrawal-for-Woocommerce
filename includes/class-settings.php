@@ -21,6 +21,16 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'exclude_external' => 'yes',
             'button_label_override' => '',
             'change_order_status_on_submit' => 'yes',
+            'button_class_order_details' => '',
+            'button_class_shortcode_button' => '',
+            'button_class_lookup_submit' => '',
+            'button_class_form_submit' => '',
+            'button_class_confirm_submit' => '',
+            'button_class_confirm_back' => '',
+            'button_class_email_link' => '',
+            'button_class_admin_export_csv' => '',
+            'button_class_admin_test_email' => '',
+            'button_class_admin_workflow_action' => '',
         ];
     }
 
@@ -36,6 +46,48 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
 
     public function register_settings(): void { register_setting('ewb_settings_group', self::OPTION_KEY, [$this,'sanitize_settings']); }
 
+    protected static function custom_button_class_fields(): array {
+        return [
+            'button_class_order_details' => 'Order details withdrawal button',
+            'button_class_shortcode_button' => '[eu_withdrawal_button] shortcode button',
+            'button_class_lookup_submit' => 'Lookup/find order button',
+            'button_class_form_submit' => 'Form submit/review button',
+            'button_class_confirm_submit' => 'Confirmation submit button',
+            'button_class_confirm_back' => 'Confirmation back button',
+            'button_class_email_link' => 'WooCommerce email withdrawal link/button',
+            'button_class_admin_export_csv' => 'Admin export CSV button',
+            'button_class_admin_test_email' => 'Admin send test email button',
+            'button_class_admin_workflow_action' => 'Admin workflow/status action links',
+        ];
+    }
+
+    protected static function sanitize_css_class_list($value): string {
+        $value = wp_strip_all_tags((string)$value);
+        $classes = preg_split('/\s+/', $value);
+        $sanitized = [];
+        foreach((array)$classes as $class){
+            $class = sanitize_html_class($class);
+            if($class !== ''){
+                $sanitized[] = $class;
+            }
+        }
+        return implode(' ', array_unique($sanitized));
+    }
+
+    protected function custom_button_classes(string $context, string $base_classes): string {
+        $settings = $this->get_settings();
+        $custom = self::sanitize_css_class_list($settings['button_class_'.$context] ?? '');
+        return trim(preg_replace('/\s+/', ' ', $base_classes.' '.$custom));
+    }
+
+    protected function frontend_button_classes(string $context, string $base_classes): string {
+        return $this->custom_button_classes($context, $base_classes);
+    }
+
+    protected function admin_button_classes(string $context, string $base_classes): string {
+        return $this->custom_button_classes($context, $base_classes);
+    }
+
     public function sanitize_settings($input): array {
         $d = self::default_settings_static();
         $lang = sanitize_text_field($input['language'] ?? 'auto'); if (!in_array($lang, ['auto','en','el','es','hu'], true)) { $lang='auto'; }
@@ -44,7 +96,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         $valid_statuses = array_map(static function($key){ return str_replace('wc-', '', $key); }, array_keys(wc_get_order_statuses()));
         $statuses = array_values(array_intersect($statuses, $valid_statuses));
         if (!$statuses) { $statuses = $d['allowed_statuses']; }
-        return [
+        $settings = [
             'page_id'=>absint($input['page_id'] ?? 0),
             'admin_email'=>sanitize_email($input['admin_email'] ?? get_option('admin_email')),
             'language'=>$lang,
@@ -63,6 +115,10 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'button_label_override'=>sanitize_text_field($input['button_label_override'] ?? ''),
             'change_order_status_on_submit'=>!empty($input['change_order_status_on_submit'])?'yes':'no',
         ];
+        foreach(self::custom_button_class_fields() as $key=>$label){
+            $settings[$key] = self::sanitize_css_class_list($input[$key] ?? '');
+        }
+        return $settings;
     }
 
     public function settings_page(): void {
@@ -72,14 +128,15 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         <div class="wrap"><h1>EU Withdrawal Button Settings</h1>
         <?php if(isset($_GET['ewb_test_email'])){ $sent = sanitize_key(wp_unslash($_GET['ewb_test_email'])) === 'sent'; echo '<div class="notice notice-'.($sent ? 'success' : 'error').'"><p>'.esc_html($sent ? 'Test email sent.' : 'Test email could not be sent. Check the WooCommerce order notes/debug log or mail server configuration.').'</p></div>'; } ?>
         <p>Shortcodes: <code>[eu_withdrawal_form]</code> and <code>[eu_withdrawal_button]</code>. The frontend CSS is deliberately minimal so buttons/inputs inherit the active theme styling.</p>
-        <p><a class="button button-secondary" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_export_csv&_wpnonce='.wp_create_nonce('ewb_export_csv'))); ?>">Export withdrawal requests CSV</a></p>
-        <p><a class="button button-secondary" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_send_test_email&_wpnonce='.wp_create_nonce('ewb_send_test_email'))); ?>">Send test email</a></p>
+        <p><a class="<?php echo esc_attr($this->admin_button_classes('admin_export_csv', 'button button-secondary')); ?>" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_export_csv&_wpnonce='.wp_create_nonce('ewb_export_csv'))); ?>">Export withdrawal requests CSV</a></p>
+        <p><a class="<?php echo esc_attr($this->admin_button_classes('admin_test_email', 'button button-secondary')); ?>" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_send_test_email&_wpnonce='.wp_create_nonce('ewb_send_test_email'))); ?>">Send test email</a></p>
         <form method="post" action="options.php"><?php settings_fields('ewb_settings_group'); ?>
         <table class="form-table" role="presentation">
         <tr><th>Withdrawal page</th><td><select name="<?php echo esc_attr(self::OPTION_KEY); ?>[page_id]"><option value="0">— Select page —</option><?php foreach($pages as $p){ echo '<option value="'.esc_attr($p->ID).'" '.selected((int)$s['page_id'],(int)$p->ID,false).'>'.esc_html($p->post_title).'</option>'; } ?></select></td></tr>
         <tr><th>Admin notification email</th><td><input type="email" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[admin_email]" value="<?php echo esc_attr($s['admin_email']); ?>"></td></tr>
         <tr><th>Frontend language</th><td><select name="<?php echo esc_attr(self::OPTION_KEY); ?>[language]"><option value="auto" <?php selected($s['language'],'auto'); ?>>Auto-detect WPML/Polylang/site locale</option><?php foreach(['en','el','es','hu'] as $l){ echo '<option value="'.esc_attr($l).'" '.selected($s['language'],$l,false).'>'.esc_html($trans[$l]['language_name']).' ('.esc_html($l).')</option>'; } ?></select></td></tr>
         <tr><th>Button label override</th><td><input type="text" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[button_label_override]" value="<?php echo esc_attr($s['button_label_override']); ?>"><p class="description">Leave empty to use translated label.</p></td></tr>
+        <tr><th>Custom button classes</th><td><p class="description">Optional CSS classes are appended after the default WooCommerce/WordPress button classes. Use class names only; HTML, scripts, inline styles, and attributes are stripped.</p><?php foreach(self::custom_button_class_fields() as $key=>$label){ echo '<p><label>'.esc_html($label).'<br><input type="text" class="regular-text" name="'.esc_attr(self::OPTION_KEY).'['.esc_attr($key).']" value="'.esc_attr($s[$key] ?? '').'" placeholder="my-custom-class"></label></p>'; } ?><p class="description">My Account &gt; Orders action classes are generated by the WooCommerce account orders template, so the plugin leaves those default template classes unchanged.</p></td></tr>
         <tr><th>Eligibility window</th><td><input type="number" min="0" step="1" name="<?php echo esc_attr(self::OPTION_KEY); ?>[eligibility_days]" value="<?php echo esc_attr($s['eligibility_days']); ?>"> days <p class="description">0 disables date limit. Default EU withdrawal period is commonly 14 days; confirm legal wording with counsel.</p></td></tr>
         <tr><th>Allowed order statuses</th><td><?php foreach(wc_get_order_statuses() as $key=>$label){ $key=str_replace('wc-','',$key); echo '<label style="display:block"><input type="checkbox" name="'.esc_attr(self::OPTION_KEY).'[allowed_statuses][]" value="'.esc_attr($key).'" '.checked(in_array($key,(array)$s['allowed_statuses'],true),true,false).'> '.esc_html($label).'</label>'; } ?></td></tr>
         <tr><th>Display / CSS</th><td><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[css_mode]" value="theme" <?php checked($s['css_mode'],'theme'); ?>> Minimal structural CSS, inherit site/theme styles</label><br><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[css_mode]" value="none" <?php checked($s['css_mode'],'none'); ?>> No frontend CSS</label></td></tr>

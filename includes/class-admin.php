@@ -42,7 +42,7 @@ abstract class EU_Withdrawal_Button_Admin extends EU_Withdrawal_Button_Frontend 
         $status=get_post_meta($post->ID,'_ewb_status',true)?:'submitted';
         echo '<p><label>Status<br><select name="ewb_status">'; foreach($this->statuses() as $k=>$l){ echo '<option value="'.esc_attr($k).'" '.selected($status,$k,false).'>'.esc_html($l).'</option>'; } echo '</select></label></p>';
         echo '<p><label>Internal note<br><textarea name="ewb_internal_note" rows="5" style="width:100%">'.esc_textarea(get_post_meta($post->ID,'_ewb_internal_note',true)).'</textarea></label></p>';
-        $oid=(int)get_post_meta($post->ID,'_ewb_order_id',true); if($oid){ $order=wc_get_order($oid); if($order instanceof WC_Order){ echo '<p><strong>Order status:</strong><br>'.esc_html(wc_get_order_status_name($order->get_status())).'</p><p><a class="button button-secondary" href="'.esc_url(admin_url('post.php?post='.$oid.'&action=edit')).'">Open order</a></p>'; } }
+        $oid=(int)get_post_meta($post->ID,'_ewb_order_id',true); if($oid){ $order=wc_get_order($oid); if($order instanceof WC_Order){ echo '<p><strong>Order status:</strong><br>'.esc_html(wc_get_order_status_name($order->get_status())).'</p><p><a class="'.esc_attr($this->admin_button_classes('admin_workflow_action', 'button button-secondary')).'" href="'.esc_url(admin_url('post.php?post='.$oid.'&action=edit')).'">Open order</a></p>'; } }
         echo '<p class="description">Use this status for the internal withdrawal workflow. The WooCommerce order is automatically set to “Withdrawal requested” when the customer submits the request, if enabled in settings.</p>';
     }
     public function save_request_admin(int $post_id,$post): void {
