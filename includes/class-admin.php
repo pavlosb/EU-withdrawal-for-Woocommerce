@@ -25,7 +25,7 @@ abstract class EU_Withdrawal_Button_Admin extends EU_Withdrawal_Button_Frontend 
     public function sortable_columns(array $cols): array { $cols['submitted']='submitted'; return $cols; }
     public function add_metaboxes(): void { add_meta_box('ewb_details','Withdrawal Request Details',[$this,'details_metabox'],self::CPT,'normal','high'); add_meta_box('ewb_workflow','Workflow',[$this,'workflow_metabox'],self::CPT,'side','default'); }
     public function details_metabox($post): void {
-        $fields=['customer_name'=>'Customer name','customer_email'=>'Customer email','order_number'=>'Order number','submitted_at'=>'Submitted at','language'=>'Language','status'=>'Request status','previous_order_status'=>'Previous order status','proof_hash'=>'Proof hash','comments'=>'Comments','ip_address'=>'IP address','user_agent'=>'User agent'];
+        $fields=['customer_name'=>'Customer name','customer_email'=>'Customer email','order_number'=>'Order number','submitted_at'=>'Submitted at','language'=>'Language','status'=>'Request status','previous_order_status'=>'Previous order status','reference_code'=>'Reference code','proof_hash'=>'Proof hash','pdf_receipt_skipped'=>'PDF receipt skipped','comments'=>'Comments','ip_address'=>'IP address','user_agent'=>'User agent'];
         echo '<table class="widefat striped"><tbody>';
         foreach($fields as $k=>$l){
             $value = get_post_meta($post->ID,'_ewb_'.$k,true);

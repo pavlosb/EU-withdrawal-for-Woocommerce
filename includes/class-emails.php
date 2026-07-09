@@ -2,7 +2,17 @@
 if (!defined('ABSPATH')) { exit; }
 
 abstract class EU_Withdrawal_Button_Emails extends EU_Withdrawal_Button_PDF {
-    protected function email_body(int $post_id,array $m): string { $products='<ul><li>'.implode('</li><li>',array_map('esc_html',(array)$m['products'])).'</li></ul>'; $body='<p>'.esc_html($this->t('received_body')).'</p><p><strong>'.esc_html($this->t('request_id')).':</strong> #'.esc_html($post_id).'<br><strong>'.esc_html($this->t('proof_hash')).':</strong> '.esc_html($m['proof_hash']).'<br><strong>'.esc_html($this->t('name')).':</strong> '.esc_html($m['customer_name']).'<br><strong>'.esc_html($this->t('email')).':</strong> '.esc_html($m['customer_email']).'<br><strong>'.esc_html($this->t('order')).':</strong> '.esc_html($m['order_number']).'<br><strong>'.esc_html($this->t('submitted_at')).':</strong> '.esc_html($m['submitted_at']).'</p><p><strong>'.esc_html($this->t('products')).':</strong></p>'.$products.'<p><strong>'.esc_html($this->t('declaration_label')).':</strong><br>'.esc_html($this->t('declaration')).'</p>'; if(!empty($m['comments'])){ $body.='<p><strong>'.esc_html($this->t('comments')).':</strong><br>'.nl2br(esc_html($m['comments'])).'</p>'; } return $body.'<p>'.esc_html($this->t('next_steps')).'</p>'; }
+    protected function email_body(int $post_id,array $m): string { $products='<ul><li>'.implode('</li><li>',array_map('esc_html',(array)$m['products'])).'</li></ul>'; $body='<p>'.esc_html($this->t('received_body')).'</p><p><strong>'.esc_html($this->t('request_id')).':</strong> #'.esc_html($post_id).'<br><strong>'.esc_html($this->t('reference_code')).':</strong> '.esc_html($m['reference_code'] ?? $post_id).'<br><strong>'.esc_html($this->t('name')).':</strong> '.esc_html($m['customer_name']).'<br><strong>'.esc_html($this->t('email')).':</strong> '.esc_html($m['customer_email']).'<br><strong>'.esc_html($this->t('order')).':</strong> '.esc_html($m['order_number']).'<br><strong>'.esc_html($this->t('submitted_at')).':</strong> '.esc_html($m['submitted_at']).'</p><p><strong>'.esc_html($this->t('products')).':</strong></p>'.$products.'<p><strong>'.esc_html($this->t('declaration_label')).':</strong><br>'.esc_html($this->t('declaration')).'</p>'; if(!empty($m['comments'])){ $body.='<p><strong>'.esc_html($this->t('comments')).':</strong><br>'.nl2br(esc_html($m['comments'])).'</p>'; } return $body.'<p>'.esc_html($this->t('next_steps')).'</p>'; }
+
+    protected function email_headers(): array {
+        $headers = ['Content-Type: text/html; charset=UTF-8'];
+        $from_name = str_replace(["\r","\n"], '', wp_specialchars_decode((string)apply_filters('woocommerce_email_from_name', get_option('woocommerce_email_from_name')), ENT_QUOTES));
+        $from_address = sanitize_email((string)apply_filters('woocommerce_email_from_address', get_option('woocommerce_email_from_address')));
+        if($from_name && $from_address && is_email($from_address)){
+            $headers[] = 'From: '.$from_name.' <'.$from_address.'>';
+        }
+        return $headers;
+    }
 
     protected function get_admin_email_recipient(): string {
         $s = $this->get_settings();
@@ -22,7 +32,7 @@ abstract class EU_Withdrawal_Button_Emails extends EU_Withdrawal_Button_PDF {
 
     protected function send_emails(int $post_id,array $meta): void {
         update_post_meta($post_id, '_ewb_email_attempted_at', current_time('mysql'));
-        $headers = ['Content-Type: text/html; charset=UTF-8'];
+        $headers = $this->email_headers();
         $body = $this->email_body($post_id,$meta);
         $attachments = [];
 
@@ -69,7 +79,7 @@ abstract class EU_Withdrawal_Button_Emails extends EU_Withdrawal_Button_PDF {
         $recipient = $this->get_admin_email_recipient();
         $sent = false;
         if($recipient){
-            $sent = wp_mail($recipient, 'EU Withdrawal Button test email', '<p>This is a test email from EU Withdrawal Button for WooCommerce.</p>', ['Content-Type: text/html; charset=UTF-8']);
+            $sent = wp_mail($recipient, 'EU Withdrawal Button test email', '<p>This is a test email from EU Withdrawal Button for WooCommerce.</p>', $this->email_headers());
         }
         if(!$sent && defined('WP_DEBUG') && WP_DEBUG){ error_log('[EU Withdrawal Button] Test email failed for '.($recipient ?: 'no valid recipient')); }
         wp_safe_redirect(add_query_arg('ewb_test_email', $sent ? 'sent' : 'failed', admin_url('admin.php?page=ewb-settings')));
