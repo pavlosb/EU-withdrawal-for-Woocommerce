@@ -10,9 +10,10 @@ final class EU_Withdrawal_Button_Plugin extends EU_Withdrawal_Button_Admin {
     }
 
     protected function __construct() {
-        add_action('init', [$this, 'register_withdrawal_order_status'], 9);
+        add_action('init', [$this, 'register_withdrawal_order_status'], 5);
         add_action('init', [$this, 'register_cpt']);
         add_action('init', [$this, 'register_order_endpoint']);
+        add_filter('woocommerce_register_shop_order_post_statuses', [$this, 'register_withdrawal_order_status_args']);
         add_filter('query_vars', [$this, 'add_query_vars']);
         add_filter('wc_order_statuses', [$this, 'add_withdrawal_order_status']);
         add_shortcode('eu_withdrawal_form', [$this, 'shortcode_form']);

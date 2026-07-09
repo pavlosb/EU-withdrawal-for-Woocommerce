@@ -2,6 +2,10 @@
 if (!defined('ABSPATH')) { exit; }
 
 abstract class EU_Withdrawal_Button_Order_Status extends EU_Withdrawal_Button_Settings {
+    const ORDER_STATUS = 'withdrawal-req';
+    const LEGACY_ORDER_STATUS = 'withdrawal-requested';
+    const LEGACY_TRUNCATED_ORDER_STATUS = 'withdrawal-reques';
+
     public function register_cpt(): void {
         register_post_type(self::CPT, [
             'labels'=>['name'=>'Withdrawal Requests','singular_name'=>'Withdrawal Request','menu_name'=>'Withdrawals','edit_item'=>'View Withdrawal Request'],
@@ -9,18 +13,27 @@ abstract class EU_Withdrawal_Button_Order_Status extends EU_Withdrawal_Button_Se
         ]);
     }
     public function register_withdrawal_order_status(): void {
-        register_post_status('wc-withdrawal-requested', [
+        register_post_status('wc-'.self::ORDER_STATUS, $this->withdrawal_order_status_args());
+    }
+
+    public function register_withdrawal_order_status_args(array $statuses): array {
+        $statuses['wc-'.self::ORDER_STATUS] = $this->withdrawal_order_status_args();
+        return $statuses;
+    }
+
+    protected function withdrawal_order_status_args(): array {
+        return [
             'label' => 'Withdrawal requested',
             'public' => true,
             'exclude_from_search' => false,
             'show_in_admin_all_list' => true,
             'show_in_admin_status_list' => true,
             'label_count' => _n_noop('Withdrawal requested <span class="count">(%s)</span>', 'Withdrawal requested <span class="count">(%s)</span>', 'eu-withdrawal-button'),
-        ]);
+        ];
     }
 
     public function add_withdrawal_order_status(array $statuses): array {
-        $custom_key = 'wc-withdrawal-requested';
+        $custom_key = 'wc-'.self::ORDER_STATUS;
         if (isset($statuses[$custom_key])) { return $statuses; }
         $out = [];
         $inserted = false;
@@ -65,11 +78,40 @@ abstract class EU_Withdrawal_Button_Order_Status extends EU_Withdrawal_Button_Se
         $previous = $order->get_status();
         update_post_meta($post_id,'_ewb_previous_order_status',$previous);
         $note = sprintf('Withdrawal request #%d submitted. Products: %s', $post_id, implode('; ', (array)($meta['products'] ?? [])));
-        if($this->get_settings()['change_order_status_on_submit']==='yes' && $previous !== 'withdrawal-requested'){
-            $order->update_status('withdrawal-requested', $note, true);
+        if($this->get_settings()['change_order_status_on_submit']==='yes' && !$this->is_withdrawal_order_status($previous)){
+            $this->persist_withdrawal_order_status($order,$post_id,$note);
         } else {
             $order->add_order_note($note);
         }
+    }
+
+    protected function is_withdrawal_order_status(string $status): bool {
+        return in_array($status, [self::ORDER_STATUS,self::LEGACY_ORDER_STATUS,self::LEGACY_TRUNCATED_ORDER_STATUS], true);
+    }
+
+    protected function persist_withdrawal_order_status(WC_Order $order,int $post_id,string $note): void {
+        try {
+            $order->set_status(self::ORDER_STATUS);
+            $order->save();
+            $fresh = wc_get_order($order->get_id());
+            $persisted = $fresh instanceof WC_Order ? $fresh->get_status() : '';
+            if($persisted === self::ORDER_STATUS){
+                $fresh->add_order_note($note);
+                update_post_meta($post_id,'_ewb_order_status_changed','yes');
+                return;
+            }
+            $this->log_order_status_failure($post_id,$order,sprintf('Expected %s after save, got %s.', self::ORDER_STATUS, $persisted ?: 'unknown'));
+        } catch (Throwable $e) {
+            $this->log_order_status_failure($post_id,$order,$e->getMessage());
+        }
+    }
+
+    protected function log_order_status_failure(int $post_id,WC_Order $order,string $message): void {
+        $message = 'Withdrawal request #'.$post_id.' could not persist order status "Withdrawal requested": '.$message;
+        update_post_meta($post_id,'_ewb_order_status_changed','no');
+        update_post_meta($post_id,'_ewb_order_status_error',$message);
+        $order->add_order_note($message);
+        if(defined('WP_DEBUG') && WP_DEBUG){ error_log('[EU Withdrawal Button] '.$message); }
     }
 }
 
