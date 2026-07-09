@@ -10,7 +10,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
     }
 
     protected function button_label(): string { $s=$this->get_settings(); return $s['button_label_override'] ?: $this->t('button_label'); }
-    protected function button_classes(string $extra=''): string { return trim('woocommerce-button button '.$extra); }
+    protected function button_classes(string $context,string $extra=''): string { return $this->frontend_button_classes($context, trim('woocommerce-button button '.$extra)); }
     protected function translated_page_id(int $page_id): int {
         if (!$page_id) { return 0; }
         $lang = $this->current_lang();
@@ -28,11 +28,11 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         if($order instanceof WC_Order){ $url=add_query_arg(['order_id'=>$order->get_id(),'order_key'=>$order->get_order_key()],$url); }
         return $url;
     }
-    public function shortcode_button(): string { return '<a class="'.esc_attr($this->button_classes()).'" href="'.esc_url($this->page_url()).'">'.esc_html($this->button_label()).'</a>'; }
+    public function shortcode_button(): string { return '<a class="'.esc_attr($this->button_classes('shortcode_button')).'" href="'.esc_url($this->page_url()).'">'.esc_html($this->button_label()).'</a>'; }
 
     public function add_order_action(array $actions,$order): array { if($order instanceof WC_Order && $this->is_order_eligible($order) && $this->eligible_items($order)){ $actions['ewb_withdrawal']=['url'=>$this->page_url($order),'name'=>$this->button_label()]; } return $actions; }
-    public function order_details_button($order): void { if($order instanceof WC_Order && $this->is_order_eligible($order) && $this->eligible_items($order)){ echo '<p><a class="'.esc_attr($this->button_classes()).'" href="'.esc_url($this->page_url($order)).'">'.esc_html($this->button_label()).'</a></p>'; } }
-    public function email_withdrawal_link($order,$sent_to_admin,$plain_text,$email): void { $s=$this->get_settings(); if($sent_to_admin || $s['show_in_order_emails']!=='yes' || !$order instanceof WC_Order || !$this->is_order_eligible($order)){ return; } $url=$this->page_url($order); if($plain_text){ echo "\n".$this->button_label().': '.esc_url_raw($url)."\n"; } else { echo '<p><a class="'.esc_attr($this->button_classes()).'" href="'.esc_url($url).'">'.esc_html($this->button_label()).'</a></p>'; } }
+    public function order_details_button($order): void { if($order instanceof WC_Order && $this->is_order_eligible($order) && $this->eligible_items($order)){ echo '<p><a class="'.esc_attr($this->button_classes('order_details')).'" href="'.esc_url($this->page_url($order)).'">'.esc_html($this->button_label()).'</a></p>'; } }
+    public function email_withdrawal_link($order,$sent_to_admin,$plain_text,$email): void { $s=$this->get_settings(); if($sent_to_admin || $s['show_in_order_emails']!=='yes' || !$order instanceof WC_Order || !$this->is_order_eligible($order)){ return; } $url=$this->page_url($order); if($plain_text){ echo "\n".$this->button_label().': '.esc_url_raw($url)."\n"; } else { echo '<p><a class="'.esc_attr($this->button_classes('email_link')).'" href="'.esc_url($url).'">'.esc_html($this->button_label()).'</a></p>'; } }
 
     protected function resolve_order_from_request(){
         $order_id=isset($_GET['order_id'])?absint($_GET['order_id']):(isset($_POST['ewb_order_id'])?absint($_POST['ewb_order_id']):0);
@@ -98,7 +98,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         echo '<h2>'.esc_html($this->t('form_title')).'</h2><p>'.esc_html($this->t('lookup_intro')).'</p>';
         echo '<div class="ewb-field"><label for="ewb_order_number">'.esc_html($this->t('order_number')).' *</label><input type="text" id="ewb_order_number" name="ewb_order_number" required value="'.esc_attr($num).'"></div>';
         echo '<div class="ewb-field"><label for="ewb_customer_email">'.esc_html($this->t('email')).' *</label><input type="email" id="ewb_customer_email" name="ewb_customer_email" required value="'.esc_attr($email).'"></div>';
-        echo '<div class="ewb-actions"><button type="submit" class="'.esc_attr($this->button_classes()).'" name="ewb_lookup" value="1">'.esc_html($this->t('lookup')).'</button></div>';
+        echo '<div class="ewb-actions"><button type="submit" class="'.esc_attr($this->button_classes('lookup_submit')).'" name="ewb_lookup" value="1">'.esc_html($this->t('lookup')).'</button></div>';
         echo '</form>';
     }
 
@@ -148,7 +148,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
             echo '<div class="ewb-field"><label><input type="checkbox" name="ewb_declaration" value="1" required> '.esc_html($this->t('declaration')).' *</label></div>';
             echo '<div class="ewb-actions">';
             $btn = $this->get_settings()['require_two_step']==='yes' ? 'ewb_review' : 'ewb_submit';
-            echo '<button type="submit" class="'.esc_attr($this->button_classes('alt')).'" name="'.$btn.'" value="1">'.esc_html($this->get_settings()['require_two_step']==='yes'?$this->t('review_title'):$this->t('submit')).'</button>';
+            echo '<button type="submit" class="'.esc_attr($this->button_classes('form_submit', 'alt')).'" name="'.$btn.'" value="1">'.esc_html($this->get_settings()['require_two_step']==='yes'?$this->t('review_title'):$this->t('submit')).'</button>';
             echo '</div>';
         }
         echo '</form>';
@@ -185,7 +185,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         ob_start(); echo '<form class="ewb-form" method="post"><div class="ewb-message"><h3>'.esc_html($this->t('review_title')).'</h3>';
         echo '<p><strong>'.esc_html($this->t('name')).':</strong> '.esc_html($d['name']).'<br><strong>'.esc_html($this->t('email')).':</strong> '.esc_html($d['email']).'<br><strong>'.esc_html($this->t('order')).':</strong> '.esc_html($d['order_number']).'</p><p><strong>'.esc_html($this->t('products')).':</strong></p><ul>'; foreach($d['products'] as $p){ echo '<li>'.esc_html($p).'</li>'; } echo '</ul><p><strong>'.esc_html($this->t('declaration_label')).':</strong><br>'.esc_html($this->t('declaration')).'</p></div>';
         wp_nonce_field(self::NONCE_ACTION,'ewb_nonce'); foreach($d as $k=>$v){ if($k==='products'){ foreach($v as $p){ echo '<input type="hidden" name="ewb_products_confirmed[]" value="'.esc_attr($p).'">'; } } elseif($k==='declaration'){ echo '<input type="hidden" name="ewb_declaration" value="1">'; } else { echo '<input type="hidden" name="ewb_'.esc_attr($k).'" value="'.esc_attr($v).'">'; } }
-        echo '<div class="ewb-actions"><button type="submit" class="'.esc_attr($this->button_classes()).'" name="ewb_back" value="1">'.esc_html($this->t('back')).'</button><button type="submit" class="'.esc_attr($this->button_classes('alt')).'" name="ewb_submit" value="1">'.esc_html($this->t('submit')).'</button></div></form>'; return ob_get_clean();
+        echo '<div class="ewb-actions"><button type="submit" class="'.esc_attr($this->button_classes('confirm_back')).'" name="ewb_back" value="1">'.esc_html($this->t('back')).'</button><button type="submit" class="'.esc_attr($this->button_classes('confirm_submit', 'alt')).'" name="ewb_submit" value="1">'.esc_html($this->t('submit')).'</button></div></form>'; return ob_get_clean();
     }
 
     protected function handle_submission(): string {
