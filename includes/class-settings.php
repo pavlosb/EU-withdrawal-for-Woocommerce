@@ -72,8 +72,8 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         <div class="wrap"><h1>EU Withdrawal Button Settings</h1>
         <?php if(isset($_GET['ewb_test_email'])){ $sent = sanitize_key(wp_unslash($_GET['ewb_test_email'])) === 'sent'; echo '<div class="notice notice-'.($sent ? 'success' : 'error').'"><p>'.esc_html($sent ? 'Test email sent.' : 'Test email could not be sent. Check the WooCommerce order notes/debug log or mail server configuration.').'</p></div>'; } ?>
         <p>Shortcodes: <code>[eu_withdrawal_form]</code> and <code>[eu_withdrawal_button]</code>. The frontend CSS is deliberately minimal so buttons/inputs inherit the active theme styling.</p>
-        <p><a class="button" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_export_csv&_wpnonce='.wp_create_nonce('ewb_export_csv'))); ?>">Export withdrawal requests CSV</a></p>
-        <p><a class="button" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_send_test_email&_wpnonce='.wp_create_nonce('ewb_send_test_email'))); ?>">Send test email</a></p>
+        <p><a class="button button-secondary" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_export_csv&_wpnonce='.wp_create_nonce('ewb_export_csv'))); ?>">Export withdrawal requests CSV</a></p>
+        <p><a class="button button-secondary" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_send_test_email&_wpnonce='.wp_create_nonce('ewb_send_test_email'))); ?>">Send test email</a></p>
         <form method="post" action="options.php"><?php settings_fields('ewb_settings_group'); ?>
         <table class="form-table" role="presentation">
         <tr><th>Withdrawal page</th><td><select name="<?php echo esc_attr(self::OPTION_KEY); ?>[page_id]"><option value="0">— Select page —</option><?php foreach($pages as $p){ echo '<option value="'.esc_attr($p->ID).'" '.selected((int)$s['page_id'],(int)$p->ID,false).'>'.esc_html($p->post_title).'</option>'; } ?></select></td></tr>

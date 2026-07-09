@@ -2,6 +2,7 @@
 
 ## 0.5.0 - Testing build
 
+- Aligned frontend and wp-admin action button classes with default WooCommerce and WordPress button styling.
 - Fixed WooCommerce order status persistence for withdrawal submissions by using a storage-safe custom status slug and verifying the saved order status before recording success notes.
 - Updated withdrawal emails to use the WooCommerce configured sender where available.
 - Added customer-friendly reference codes for email/PDF receipts while preserving the internal proof hash for admin audit details.

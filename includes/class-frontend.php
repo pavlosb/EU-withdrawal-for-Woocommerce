@@ -5,12 +5,12 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
     public function enqueue_styles(): void {
         $mode = $this->get_settings()['css_mode'];
         if ($mode === 'none') { return; }
-        $css = '.ewb-form{max-width:var(--ewb-form-max-width,760px)}.ewb-form .ewb-field{margin-block:1rem}.ewb-form label{display:block;margin-bottom:.35rem}.ewb-form input[type=text],.ewb-form input[type=email],.ewb-form input[type=number],.ewb-form textarea,.ewb-form select{width:100%;max-width:100%;box-sizing:border-box}.ewb-form fieldset{margin:1rem 0}.ewb-form .ewb-item{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,130px);gap:1rem;align-items:center;margin:.65rem 0}.ewb-message{margin:1rem 0}.ewb-actions{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}.ewb-muted{opacity:.75}.ewb-button-link{display:inline-block}';
+        $css = '.ewb-form{max-width:var(--ewb-form-max-width,760px)}.ewb-form .ewb-field{margin-block:1rem}.ewb-form label{display:block;margin-bottom:.35rem}.ewb-form input[type=text],.ewb-form input[type=email],.ewb-form input[type=number],.ewb-form textarea,.ewb-form select{width:100%;max-width:100%;box-sizing:border-box}.ewb-form fieldset{margin:1rem 0}.ewb-form .ewb-item{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,130px);gap:1rem;align-items:center;margin:.65rem 0}.ewb-message{margin:1rem 0}.ewb-actions{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}.ewb-muted{opacity:.75}';
         wp_register_style('ewb-inline', false, [], self::VERSION); wp_enqueue_style('ewb-inline'); wp_add_inline_style('ewb-inline', $css);
     }
 
     protected function button_label(): string { $s=$this->get_settings(); return $s['button_label_override'] ?: $this->t('button_label'); }
-    protected function button_classes(string $extra=''): string { return trim('woocommerce-button button ewb-button-link '.$extra); }
+    protected function button_classes(string $extra=''): string { return trim('woocommerce-button button '.$extra); }
     protected function translated_page_id(int $page_id): int {
         if (!$page_id) { return 0; }
         $lang = $this->current_lang();
