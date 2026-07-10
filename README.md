@@ -8,7 +8,7 @@ The plugin adds a customer-facing withdrawal form, WooCommerce order-aware produ
 
 ## Current version
 
-`0.5.0` testing build.
+`0.5.1` testing build.
 
 ## Main features
 
