@@ -28,7 +28,12 @@ final class EU_Withdrawal_Button_Plugin extends EU_Withdrawal_Button_Admin {
         add_action('admin_post_ewb_send_test_email', [$this, 'send_test_email']);
         add_filter('manage_' . self::CPT . '_posts_columns', [$this, 'admin_columns']);
         add_action('manage_' . self::CPT . '_posts_custom_column', [$this, 'admin_column_content'], 10, 2);
+        add_filter('list_table_primary_column', [$this, 'primary_column'], 10, 2);
         add_filter('manage_edit-' . self::CPT . '_sortable_columns', [$this, 'sortable_columns']);
+        add_filter('post_row_actions', [$this, 'row_actions'], 10, 2);
+        add_action('restrict_manage_posts', [$this, 'admin_filters']);
+        add_action('pre_get_posts', [$this, 'filter_admin_requests']);
+        add_action('admin_post_ewb_workflow_action', [$this, 'handle_workflow_action']);
         add_action('add_meta_boxes', [$this, 'add_metaboxes']);
         add_action('save_post_' . self::CPT, [$this, 'save_request_admin'], 10, 2);
     }
