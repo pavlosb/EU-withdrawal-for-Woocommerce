@@ -2,6 +2,7 @@
 
 ## 0.5.0 - Testing build
 
+- Improved the confirmation step summary layout with a readable inner summary block.
 - Improved the Withdrawal Requests admin list with clearer columns, filters, and nonce-protected workflow row actions.
 - Added centered withdrawal form presentation with configurable safe before/after helper text and an optional plugin form heading.
 - Added append-only admin settings for custom CSS classes on plugin-generated frontend and admin buttons.
