@@ -2,6 +2,7 @@
 
 ## 0.5.0 - Testing build
 
+- Added centered withdrawal form presentation with configurable safe before/after helper text and an optional plugin form heading.
 - Added append-only admin settings for custom CSS classes on plugin-generated frontend and admin buttons.
 - Aligned frontend and wp-admin action button classes with default WooCommerce and WordPress button styling.
 - Fixed WooCommerce order status persistence for withdrawal submissions by using a storage-safe custom status slug and verifying the saved order status before recording success notes.
