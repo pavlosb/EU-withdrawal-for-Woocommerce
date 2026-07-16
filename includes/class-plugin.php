@@ -23,6 +23,7 @@ final class EU_Withdrawal_Button_Plugin extends EU_Withdrawal_Button_Admin {
         add_action('woocommerce_order_details_after_order_table', [$this, 'order_details_button']);
         add_action('woocommerce_email_after_order_table', [$this, 'email_withdrawal_link'], 20, 4);
         add_action('admin_menu', [$this, 'admin_menu']);
+        add_action('admin_menu', [$this, 'add_withdrawals_menu_badge'], 99);
         add_action('admin_init', [$this, 'register_settings']);
         add_action('admin_post_ewb_export_csv', [$this, 'export_csv']);
         add_action('admin_post_ewb_send_test_email', [$this, 'send_test_email']);
@@ -62,4 +63,3 @@ final class EU_Withdrawal_Button_Plugin extends EU_Withdrawal_Button_Admin {
 
     public static function deactivate(): void { flush_rewrite_rules(); }
 }
-
