@@ -3,6 +3,7 @@
 ## 0.5.1 - Testing build
 
 - Added an admin menu count badge for actionable withdrawal requests.
+- Added an admin-configurable customer-facing withdrawal action label for plugin-generated withdrawal links and buttons.
 - Updated withdrawal emails to use the WooCommerce configured sender where available.
 - Added customer-friendly reference codes for customer email/PDF receipts while preserving the internal proof hash for admin audit details.
 - Added a Greek/Unicode PDF receipt fallback that skips unsafe simple PDF attachments and keeps the HTML email receipt readable.
