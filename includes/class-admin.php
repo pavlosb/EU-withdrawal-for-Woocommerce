@@ -4,6 +4,30 @@ if (!defined('ABSPATH')) { exit; }
 abstract class EU_Withdrawal_Button_Admin extends EU_Withdrawal_Button_Frontend {
     public function admin_menu(): void { add_submenu_page('woocommerce','EU Withdrawal Settings','Withdrawal Settings','manage_woocommerce','ewb-settings',[$this,'settings_page']); }
 
+    protected function actionable_statuses(): array { return ['submitted','in_review']; }
+    protected function actionable_request_count(): int {
+        if(!is_admin() || !current_user_can('edit_shop_orders')){ return 0; }
+        global $wpdb;
+        $statuses=$this->actionable_statuses();
+        $placeholders=implode(',', array_fill(0, count($statuses), '%s'));
+        $sql="SELECT COUNT(1) FROM {$wpdb->posts} p INNER JOIN {$wpdb->postmeta} pm ON p.ID=pm.post_id AND pm.meta_key=%s WHERE p.post_type=%s AND p.post_status=%s AND pm.meta_value IN ($placeholders)";
+        return (int)$wpdb->get_var($wpdb->prepare($sql, array_merge(['_ewb_status', self::CPT, 'publish'], $statuses)));
+    }
+    public function add_withdrawals_menu_badge(): void {
+        if(!is_admin() || !current_user_can('edit_shop_orders')){ return; }
+        $count=$this->actionable_request_count();
+        if($count<1){ return; }
+        global $submenu;
+        if(empty($submenu['woocommerce']) || !is_array($submenu['woocommerce'])){ return; }
+        foreach($submenu['woocommerce'] as &$item){
+            if(!isset($item[2]) || $item[2] !== 'edit.php?post_type='.self::CPT){ continue; }
+            $label=wp_strip_all_tags((string)$item[0]);
+            $item[0]=esc_html($label).' <span class="update-plugins count-'.esc_attr((string)$count).'"><span class="plugin-count">'.esc_html(number_format_i18n($count)).'</span></span>';
+            break;
+        }
+        unset($item);
+    }
+
     public function admin_columns(array $cols): array { return ['cb'=>$cols['cb']??'','request_id'=>'Request ID','order'=>'WooCommerce order','customer_name'=>'Customer name','customer_email'=>'Customer email','language'=>'Language','submitted'=>'Submitted date','status'=>'Request status','order_status'=>'Order status']; }
     public function admin_column_content(string $col,int $post_id): void {
         if($col==='request_id'){
@@ -156,4 +180,3 @@ abstract class EU_Withdrawal_Button_Admin extends EU_Withdrawal_Button_Frontend 
     }
     public function export_csv(): void { if(!current_user_can('manage_woocommerce') || !wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['_wpnonce']??'')),'ewb_export_csv')){ wp_die('Forbidden'); } header('Content-Type: text/csv; charset=utf-8'); header('Content-Disposition: attachment; filename=withdrawal-requests.csv'); $out=fopen('php://output','w'); fputcsv($out,['ID','Order','Customer','Email','Submitted','Status','Language','Products','Proof hash']); $q=new WP_Query(['post_type'=>self::CPT,'posts_per_page'=>-1,'post_status'=>'publish']); foreach($q->posts as $p){ fputcsv($out,[$p->ID,get_post_meta($p->ID,'_ewb_order_number',true),get_post_meta($p->ID,'_ewb_customer_name',true),get_post_meta($p->ID,'_ewb_customer_email',true),get_post_meta($p->ID,'_ewb_submitted_at',true),get_post_meta($p->ID,'_ewb_status',true),get_post_meta($p->ID,'_ewb_language',true),implode('; ',(array)get_post_meta($p->ID,'_ewb_products',true)),get_post_meta($p->ID,'_ewb_proof_hash',true)]); } exit; }
 }
-
