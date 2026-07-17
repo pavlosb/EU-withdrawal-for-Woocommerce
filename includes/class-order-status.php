@@ -1,7 +1,7 @@
 <?php
 if (!defined('ABSPATH')) { exit; }
 
-abstract class EU_Withdrawal_Button_Order_Status extends EU_Withdrawal_Button_Settings {
+abstract class EU_Withdrawal_Button_Order_Status extends EU_Withdrawal_Button_Privacy {
     const ORDER_STATUS = 'withdrawal-req';
     const LEGACY_ORDER_STATUS = 'withdrawal-requested';
     const LEGACY_TRUNCATED_ORDER_STATUS = 'withdrawal-reques';
