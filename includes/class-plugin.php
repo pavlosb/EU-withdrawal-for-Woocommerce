@@ -16,6 +16,8 @@ final class EU_Withdrawal_Button_Plugin extends EU_Withdrawal_Button_Admin {
         add_filter('woocommerce_register_shop_order_post_statuses', [$this, 'register_withdrawal_order_status_args']);
         add_filter('query_vars', [$this, 'add_query_vars']);
         add_filter('wc_order_statuses', [$this, 'add_withdrawal_order_status']);
+        add_filter('wp_privacy_personal_data_exporters', [$this, 'register_privacy_exporter']);
+        add_filter('wp_privacy_personal_data_erasers', [$this, 'register_privacy_eraser']);
         add_shortcode('eu_withdrawal_form', [$this, 'shortcode_form']);
         add_shortcode('eu_withdrawal_button', [$this, 'shortcode_button']);
         add_action('wp_enqueue_scripts', [$this, 'enqueue_styles']);
