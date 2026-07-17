@@ -60,6 +60,6 @@ jobs:
       - name: Upload plugin ZIP artifact
         uses: actions/upload-artifact@v4
         with:
-          name: eu-withdrawal-button-${{ steps.plugin.outputs.version }}
+          name: wordpress-plugin-zip-${{ steps.plugin.outputs.version }}
           path: ${{ steps.plugin.outputs.zip_name }}
           if-no-files-found: error
