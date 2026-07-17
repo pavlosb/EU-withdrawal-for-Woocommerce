@@ -137,13 +137,21 @@ abstract class EU_Withdrawal_Button_Privacy extends EU_Withdrawal_Button_Setting
     }
 
     protected function anonymize_withdrawal_request(int $post_id): void {
-        // Direct identifiers, contact details, free-text comments, IP address, and user agent are anonymized.
+        // Direct identifiers, contact details, free-text comments, IP address, user agent, and customer-facing title text are anonymized.
         update_post_meta($post_id, '_ewb_customer_name', __('Anonymized customer', 'eu-withdrawal-button'));
         update_post_meta($post_id, '_ewb_customer_email', $this->anonymous_email_for_request($post_id));
         update_post_meta($post_id, '_ewb_comments', '');
         update_post_meta($post_id, '_ewb_ip_address', '');
         update_post_meta($post_id, '_ewb_user_agent', '');
         update_post_meta($post_id, '_ewb_privacy_anonymized_at', current_time('mysql'));
+
+        $order_number = $this->privacy_meta($post_id, 'order_number');
+        wp_update_post([
+            'ID' => $post_id,
+            'post_title' => $order_number !== ''
+                ? sprintf(__('Withdrawal request - Order %s - Anonymized customer', 'eu-withdrawal-button'), $order_number)
+                : sprintf(__('Withdrawal request #%d - Anonymized customer', 'eu-withdrawal-button'), $post_id),
+        ]);
 
         // The request post, order ID/number, selected products, submitted date, status, language, reference code, and proof hash are intentionally retained.
         // They are order-linked audit/proof data needed to keep withdrawal workflow and legal integrity usable after anonymization.
