@@ -2,6 +2,7 @@
 
 ## 0.5.3 - Testing build
 
+- Improved WPML/Polylang compatibility for translated Withdrawal page URLs in email links and documented multilingual test coverage.
 - Added WordPress personal data exporter and eraser/anonymizer support for EU Withdrawal Requests.
 - Added configurable multilingual customer and admin email templates with safe placeholders and sanitized basic HTML output.
 - Moved plugin settings to the new standard settings location implemented in the latest merged PR.
