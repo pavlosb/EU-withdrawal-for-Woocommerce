@@ -13,6 +13,7 @@ if (!defined('ABSPATH')) { exit; }
 
 require_once __DIR__ . '/includes/class-i18n.php';
 require_once __DIR__ . '/includes/class-settings.php';
+require_once __DIR__ . '/includes/class-privacy.php';
 require_once __DIR__ . '/includes/class-order-status.php';
 require_once __DIR__ . '/includes/class-pdf.php';
 require_once __DIR__ . '/includes/class-emails.php';
