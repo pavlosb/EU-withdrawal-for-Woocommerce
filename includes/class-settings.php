@@ -24,6 +24,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'hide_form_heading' => 'no',
             'before_form_text' => '',
             'after_form_text' => '',
+            'email_templates' => self::default_email_templates(),
             'change_order_status_on_submit' => 'yes',
             'button_class_order_details' => '',
             'button_class_shortcode_button' => '',
@@ -39,7 +40,9 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
     }
 
     protected function get_settings(): array {
-        return wp_parse_args(get_option(self::OPTION_KEY, []), self::default_settings_static());
+        $settings = wp_parse_args(get_option(self::OPTION_KEY, []), self::default_settings_static());
+        $settings['email_templates'] = self::normalize_email_templates($settings['email_templates'] ?? []);
+        return $settings;
     }
 
     protected static function get_setting_static(string $key, $default='') {
@@ -57,6 +60,79 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
     public function add_woocommerce_settings_tab(array $tabs): array {
         $tabs['ewb_withdrawal'] = 'EU Withdrawal';
         return $tabs;
+    }
+
+    protected static function email_template_languages(): array {
+        return ['en'=>'English','el'=>'Greek','es'=>'Spanish','hu'=>'Hungarian'];
+    }
+
+    protected static function email_template_fields(): array {
+        return [
+            'customer_subject' => ['label'=>'Customer confirmation subject','type'=>'subject'],
+            'customer_body' => ['label'=>'Customer confirmation body','type'=>'body'],
+            'admin_subject' => ['label'=>'Admin notification subject','type'=>'subject'],
+            'admin_body' => ['label'=>'Admin notification body','type'=>'body'],
+        ];
+    }
+
+    protected static function default_email_templates(): array {
+        $templates = [];
+        foreach(self::email_template_fields() as $field=>$config){
+            $templates[$field] = [];
+            foreach(self::email_template_languages() as $lang=>$label){
+                $templates[$field][$lang] = '';
+            }
+        }
+        return $templates;
+    }
+
+    protected static function normalize_email_templates($templates): array {
+        $normalized = self::default_email_templates();
+        $templates = is_array($templates) ? $templates : [];
+        foreach($normalized as $field=>$langs){
+            foreach($langs as $lang=>$default){
+                if(isset($templates[$field]) && is_array($templates[$field]) && isset($templates[$field][$lang])){
+                    $normalized[$field][$lang] = (string)$templates[$field][$lang];
+                }
+            }
+        }
+        return $normalized;
+    }
+
+    protected static function email_template_allowed_html(): array {
+        return [
+            'a' => ['href'=>[], 'title'=>[]],
+            'br' => [],
+            'p' => [],
+            'strong' => [],
+            'em' => [],
+            'b' => [],
+            'i' => [],
+            'ul' => [],
+            'ol' => [],
+            'li' => [],
+            'code' => [],
+        ];
+    }
+
+    protected static function sanitize_email_template_subject($value): string {
+        return sanitize_text_field(wp_unslash((string)$value));
+    }
+
+    protected static function sanitize_email_template_body($value): string {
+        return wp_kses(wp_unslash((string)$value), self::email_template_allowed_html());
+    }
+
+    protected static function sanitize_email_templates($templates): array {
+        $templates = is_array($templates) ? $templates : [];
+        $sanitized = self::default_email_templates();
+        foreach(self::email_template_fields() as $field=>$config){
+            foreach(self::email_template_languages() as $lang=>$label){
+                $value = $templates[$field][$lang] ?? '';
+                $sanitized[$field][$lang] = $config['type'] === 'subject' ? self::sanitize_email_template_subject($value) : self::sanitize_email_template_body($value);
+            }
+        }
+        return $sanitized;
     }
 
     protected static function custom_button_class_fields(): array {
@@ -169,6 +245,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'hide_form_heading'=>!empty($input['hide_form_heading'])?'yes':'no',
             'before_form_text'=>self::sanitize_helper_text(wp_unslash($input['before_form_text'] ?? '')),
             'after_form_text'=>self::sanitize_helper_text(wp_unslash($input['after_form_text'] ?? '')),
+            'email_templates'=>self::sanitize_email_templates($input['email_templates'] ?? []),
             'change_order_status_on_submit'=>!empty($input['change_order_status_on_submit'])?'yes':'no',
         ];
         foreach(self::custom_button_class_fields() as $key=>$label){
@@ -186,6 +263,9 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
 
     protected function render_settings_fields(): void {
         $s=$this->get_settings(); $pages=get_pages(['sort_column'=>'post_title']); $trans=$this->translations(); $cats=get_terms(['taxonomy'=>'product_cat','hide_empty'=>false]);
+        $email_templates = self::normalize_email_templates($s['email_templates'] ?? []);
+        $customer_placeholders = ['{request_id}','{order_number}','{customer_name}','{customer_email}','{products}','{submitted_at}','{withdrawal_status}','{reference_code}','{withdrawal_url}','{site_name}'];
+        $admin_placeholders = array_merge($customer_placeholders, ['{proof_hash}']);
         ?>
         <p>Shortcodes: <code>[eu_withdrawal_form]</code> and <code>[eu_withdrawal_button]</code>. The frontend CSS is deliberately minimal so buttons/inputs inherit the active theme styling.</p>
         <p><a class="<?php echo esc_attr($this->admin_button_classes('admin_export_csv', 'button button-secondary')); ?>" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_export_csv&_wpnonce='.wp_create_nonce('ewb_export_csv'))); ?>">Export withdrawal requests CSV</a></p>
@@ -195,6 +275,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         <tr><th>Admin notification email</th><td><input type="email" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[admin_email]" value="<?php echo esc_attr($s['admin_email']); ?>"></td></tr>
         <tr><th>Frontend language</th><td><select name="<?php echo esc_attr(self::OPTION_KEY); ?>[language]"><option value="auto" <?php selected($s['language'],'auto'); ?>>Auto-detect WPML/Polylang/site locale</option><?php foreach(['en','el','es','hu'] as $l){ echo '<option value="'.esc_attr($l).'" '.selected($s['language'],$l,false).'>'.esc_html($trans[$l]['language_name']).' ('.esc_html($l).')</option>'; } ?></select></td></tr>
         <tr><th>Withdrawal action label</th><td><input type="text" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[withdrawal_action_label]" value="<?php echo esc_attr($s['withdrawal_action_label'] ?: ($s['button_label_override'] ?? '')); ?>"><p class="description">Shown on customer-facing withdrawal links and buttons. Leave empty to use the translated default label.</p></td></tr>
+        <tr><th>Email templates</th><td><p class="description">Optional multilingual templates for withdrawal request emails. Leave any field empty to use the current built-in translated default for that language.</p><p><strong>Customer placeholders:</strong> <?php foreach($customer_placeholders as $placeholder){ echo '<code>'.esc_html($placeholder).'</code> '; } ?></p><p><strong>Admin placeholders:</strong> <?php foreach($admin_placeholders as $placeholder){ echo '<code>'.esc_html($placeholder).'</code> '; } ?></p><p class="description">Customer templates do not expose the raw proof hash; use <code>{reference_code}</code> for customer-facing references. Admin/internal templates may use <code>{proof_hash}</code>. Bodies allow basic email HTML only; scripts, iframes, event-handler attributes, styles, and unsafe HTML are stripped.</p><?php foreach(self::email_template_languages() as $lang=>$label){ ?><div style="margin:1em 0;padding:1em;border:1px solid #ccd0d4;"><h4><?php echo esc_html($label.' ('.$lang.')'); ?></h4><p><label>Customer confirmation subject<br><input type="text" class="large-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[email_templates][customer_subject][<?php echo esc_attr($lang); ?>]" value="<?php echo esc_attr($email_templates['customer_subject'][$lang]); ?>" placeholder="<?php echo esc_attr($trans[$lang]['email_subject'] ?? $this->t('email_subject')); ?>"></label></p><p><label>Customer confirmation body<br><textarea class="large-text" rows="5" name="<?php echo esc_attr(self::OPTION_KEY); ?>[email_templates][customer_body][<?php echo esc_attr($lang); ?>]" placeholder="<?php echo esc_attr('Leave empty to use the built-in translated customer receipt.'); ?>"><?php echo esc_textarea($email_templates['customer_body'][$lang]); ?></textarea></label></p><p><label>Admin notification subject<br><input type="text" class="large-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[email_templates][admin_subject][<?php echo esc_attr($lang); ?>]" value="<?php echo esc_attr($email_templates['admin_subject'][$lang]); ?>" placeholder="<?php echo esc_attr(($trans[$lang]['admin_new_subject'] ?? $this->t('admin_new_subject')).' {order_number}'); ?>"></label></p><p><label>Admin notification body<br><textarea class="large-text" rows="5" name="<?php echo esc_attr(self::OPTION_KEY); ?>[email_templates][admin_body][<?php echo esc_attr($lang); ?>]" placeholder="<?php echo esc_attr('Leave empty to use the built-in translated admin notification.'); ?>"><?php echo esc_textarea($email_templates['admin_body'][$lang]); ?></textarea></label></p></div><?php } ?></td></tr>
         <tr><th>Form display and helper text</th><td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[hide_form_heading]" value="yes" <?php checked($s['hide_form_heading'],'yes'); ?>> Hide plugin form heading</label><p class="description">Use this if your page/theme already displays a suitable page heading.</p><p><label>Before form text<br><textarea class="large-text" rows="4" name="<?php echo esc_attr(self::OPTION_KEY); ?>[before_form_text]" placeholder="<?php echo esc_attr($this->default_form_helper_text('before')); ?>"><?php echo esc_textarea($s['before_form_text'] ?? ''); ?></textarea></label></p><p class="description">Shown above the withdrawal form. Leave empty to use the localized default helper text.</p><p><label>After form text<br><textarea class="large-text" rows="4" name="<?php echo esc_attr(self::OPTION_KEY); ?>[after_form_text]" placeholder="<?php echo esc_attr($this->default_form_helper_text('after')); ?>"><?php echo esc_textarea($s['after_form_text'] ?? ''); ?></textarea></label></p><p class="description">Shown below the withdrawal form. Basic safe formatting is allowed; scripts and unsafe HTML are stripped.</p></td></tr>
         <tr><th>Custom button classes</th><td><p class="description">Optional CSS classes are appended after the default WooCommerce/WordPress button classes. Use class names only; HTML, scripts, inline styles, and attributes are stripped.</p><?php foreach(self::custom_button_class_fields() as $key=>$label){ echo '<p><label>'.esc_html($label).'<br><input type="text" class="regular-text" name="'.esc_attr(self::OPTION_KEY).'['.esc_attr($key).']" value="'.esc_attr($s[$key] ?? '').'" placeholder="my-custom-class"></label></p>'; } ?><p class="description">My Account &gt; Orders action classes are generated by the WooCommerce account orders template, so the plugin leaves those default template classes unchanged.</p></td></tr>
         <tr><th>Eligibility window</th><td><input type="number" min="0" step="1" name="<?php echo esc_attr(self::OPTION_KEY); ?>[eligibility_days]" value="<?php echo esc_attr($s['eligibility_days']); ?>"> days <p class="description">0 disables date limit. Default EU withdrawal period is commonly 14 days; confirm legal wording with counsel.</p></td></tr>
