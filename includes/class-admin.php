@@ -2,7 +2,7 @@
 if (!defined('ABSPATH')) { exit; }
 
 abstract class EU_Withdrawal_Button_Admin extends EU_Withdrawal_Button_Frontend {
-    public function admin_menu(): void { add_submenu_page('woocommerce','EU Withdrawal Settings','Withdrawal Settings','manage_woocommerce','ewb-settings',[$this,'settings_page']); }
+    public function admin_menu(): void { add_submenu_page(null,'EU Withdrawal Settings','EU Withdrawal Settings','manage_woocommerce','ewb-settings',[$this,'settings_page']); }
 
     protected function actionable_statuses(): array { return ['submitted','in_review']; }
     protected function actionable_request_count(): int {

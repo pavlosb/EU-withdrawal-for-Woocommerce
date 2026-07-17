@@ -82,7 +82,7 @@ abstract class EU_Withdrawal_Button_Emails extends EU_Withdrawal_Button_PDF {
             $sent = wp_mail($recipient, 'EU Withdrawal Button test email', '<p>This is a test email from EU Withdrawal Button for WooCommerce.</p>', $this->email_headers());
         }
         if(!$sent && defined('WP_DEBUG') && WP_DEBUG){ error_log('[EU Withdrawal Button] Test email failed for '.($recipient ?: 'no valid recipient')); }
-        wp_safe_redirect(add_query_arg('ewb_test_email', $sent ? 'sent' : 'failed', admin_url('admin.php?page=ewb-settings')));
+        wp_safe_redirect(add_query_arg('ewb_test_email', $sent ? 'sent' : 'failed', $this->settings_url()));
         exit;
     }
 }

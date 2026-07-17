@@ -50,6 +50,15 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
 
     public function register_settings(): void { register_setting('ewb_settings_group', self::OPTION_KEY, [$this,'sanitize_settings']); }
 
+    protected function settings_url(): string {
+        return admin_url('admin.php?page=wc-settings&tab=ewb_withdrawal');
+    }
+
+    public function add_woocommerce_settings_tab(array $tabs): array {
+        $tabs['ewb_withdrawal'] = 'EU Withdrawal';
+        return $tabs;
+    }
+
     protected static function custom_button_class_fields(): array {
         return [
             'button_class_order_details' => 'Order details withdrawal button',
@@ -168,16 +177,19 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         return $settings;
     }
 
-    public function settings_page(): void {
-        if (!current_user_can('manage_woocommerce')) { return; }
+    protected function render_settings_notices(): void {
+        if(isset($_GET['ewb_test_email'])){
+            $sent = sanitize_key(wp_unslash($_GET['ewb_test_email'])) === 'sent';
+            echo '<div class="notice notice-'.($sent ? 'success' : 'error').'"><p>'.esc_html($sent ? 'Test email sent.' : 'Test email could not be sent. Check the WooCommerce order notes/debug log or mail server configuration.').'</p></div>';
+        }
+    }
+
+    protected function render_settings_fields(): void {
         $s=$this->get_settings(); $pages=get_pages(['sort_column'=>'post_title']); $trans=$this->translations(); $cats=get_terms(['taxonomy'=>'product_cat','hide_empty'=>false]);
         ?>
-        <div class="wrap"><h1>EU Withdrawal Button Settings</h1>
-        <?php if(isset($_GET['ewb_test_email'])){ $sent = sanitize_key(wp_unslash($_GET['ewb_test_email'])) === 'sent'; echo '<div class="notice notice-'.($sent ? 'success' : 'error').'"><p>'.esc_html($sent ? 'Test email sent.' : 'Test email could not be sent. Check the WooCommerce order notes/debug log or mail server configuration.').'</p></div>'; } ?>
         <p>Shortcodes: <code>[eu_withdrawal_form]</code> and <code>[eu_withdrawal_button]</code>. The frontend CSS is deliberately minimal so buttons/inputs inherit the active theme styling.</p>
         <p><a class="<?php echo esc_attr($this->admin_button_classes('admin_export_csv', 'button button-secondary')); ?>" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_export_csv&_wpnonce='.wp_create_nonce('ewb_export_csv'))); ?>">Export withdrawal requests CSV</a></p>
         <p><a class="<?php echo esc_attr($this->admin_button_classes('admin_test_email', 'button button-secondary')); ?>" href="<?php echo esc_url(admin_url('admin-post.php?action=ewb_send_test_email&_wpnonce='.wp_create_nonce('ewb_send_test_email'))); ?>">Send test email</a></p>
-        <form method="post" action="options.php"><?php settings_fields('ewb_settings_group'); ?>
         <table class="form-table" role="presentation">
         <tr><th>Withdrawal page</th><td><select name="<?php echo esc_attr(self::OPTION_KEY); ?>[page_id]"><option value="0">— Select page —</option><?php foreach($pages as $p){ echo '<option value="'.esc_attr($p->ID).'" '.selected((int)$s['page_id'],(int)$p->ID,false).'>'.esc_html($p->post_title).'</option>'; } ?></select></td></tr>
         <tr><th>Admin notification email</th><td><input type="email" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[admin_email]" value="<?php echo esc_attr($s['admin_email']); ?>"></td></tr>
@@ -192,8 +204,30 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         <tr><th>Excluded products</th><td><input type="text" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[excluded_product_ids]" value="<?php echo esc_attr($s['excluded_product_ids']); ?>"><p class="description">Comma-separated product or variation IDs.</p></td></tr>
         <tr><th>Excluded categories</th><td><?php if(!is_wp_error($cats)){ foreach($cats as $cat){ echo '<label style="display:block"><input type="checkbox" name="'.esc_attr(self::OPTION_KEY).'[excluded_category_ids][]" value="'.esc_attr($cat->term_id).'" '.checked(in_array((int)$cat->term_id,(array)$s['excluded_category_ids'],true),true,false).'> '.esc_html($cat->name).'</label>'; } } ?></td></tr>
         <tr><th>Excluded product types</th><td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[exclude_virtual]" value="yes" <?php checked($s['exclude_virtual'],'yes'); ?>> Virtual</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[exclude_downloadable]" value="yes" <?php checked($s['exclude_downloadable'],'yes'); ?>> Downloadable</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[exclude_external]" value="yes" <?php checked($s['exclude_external'],'yes'); ?>> External/Affiliate</label></td></tr>
-        </table><?php submit_button(); ?></form></div>
+        </table>
         <?php
+    }
+
+    public function output_woocommerce_settings_tab(): void {
+        if (!current_user_can('manage_woocommerce')) { return; }
+        echo '<h2>EU Withdrawal</h2>';
+        $this->render_settings_notices();
+        $this->render_settings_fields();
+    }
+
+    public function save_woocommerce_settings_tab(): void {
+        if (!current_user_can('manage_woocommerce')) { return; }
+        $input = isset($_POST[self::OPTION_KEY]) ? (array)$_POST[self::OPTION_KEY] : [];
+        update_option(self::OPTION_KEY, $this->sanitize_settings($input));
+    }
+
+    public function settings_page(): void {
+        if (!current_user_can('manage_woocommerce')) { return; }
+        if(!headers_sent()){
+            wp_safe_redirect($this->settings_url());
+            exit;
+        }
+        echo '<div class="wrap"><h1>EU Withdrawal Button Settings</h1><p><a class="button button-primary" href="'.esc_url($this->settings_url()).'">Open WooCommerce EU Withdrawal settings</a></p></div>';
     }
 }
 
