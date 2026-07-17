@@ -19,6 +19,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'exclude_virtual' => 'no',
             'exclude_downloadable' => 'no',
             'exclude_external' => 'yes',
+            'withdrawal_action_label' => '',
             'button_label_override' => '',
             'hide_form_heading' => 'no',
             'before_form_text' => '',
@@ -130,12 +131,14 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
 
     public function sanitize_settings($input): array {
         $d = self::default_settings_static();
+        $existing = get_option(self::OPTION_KEY, []);
         $lang = sanitize_text_field($input['language'] ?? 'auto'); if (!in_array($lang, ['auto','en','el','es','hu'], true)) { $lang='auto'; }
         $css = sanitize_text_field($input['css_mode'] ?? 'theme'); if (!in_array($css, ['theme','none'], true)) { $css='theme'; }
         $statuses = array_map('sanitize_key', (array)($input['allowed_statuses'] ?? $d['allowed_statuses']));
         $valid_statuses = array_map(static function($key){ return str_replace('wc-', '', $key); }, array_keys(wc_get_order_statuses()));
         $statuses = array_values(array_intersect($statuses, $valid_statuses));
         if (!$statuses) { $statuses = $d['allowed_statuses']; }
+        $action_label = sanitize_text_field(wp_unslash($input['withdrawal_action_label'] ?? ($input['button_label_override'] ?? ($existing['withdrawal_action_label'] ?? ($existing['button_label_override'] ?? '')))));
         $settings = [
             'page_id'=>absint($input['page_id'] ?? 0),
             'admin_email'=>sanitize_email($input['admin_email'] ?? get_option('admin_email')),
@@ -152,7 +155,8 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'exclude_virtual'=>!empty($input['exclude_virtual'])?'yes':'no',
             'exclude_downloadable'=>!empty($input['exclude_downloadable'])?'yes':'no',
             'exclude_external'=>!empty($input['exclude_external'])?'yes':'no',
-            'button_label_override'=>sanitize_text_field($input['button_label_override'] ?? ''),
+            'withdrawal_action_label'=>$action_label,
+            'button_label_override'=>$action_label,
             'hide_form_heading'=>!empty($input['hide_form_heading'])?'yes':'no',
             'before_form_text'=>self::sanitize_helper_text(wp_unslash($input['before_form_text'] ?? '')),
             'after_form_text'=>self::sanitize_helper_text(wp_unslash($input['after_form_text'] ?? '')),
@@ -178,7 +182,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         <tr><th>Withdrawal page</th><td><select name="<?php echo esc_attr(self::OPTION_KEY); ?>[page_id]"><option value="0">— Select page —</option><?php foreach($pages as $p){ echo '<option value="'.esc_attr($p->ID).'" '.selected((int)$s['page_id'],(int)$p->ID,false).'>'.esc_html($p->post_title).'</option>'; } ?></select></td></tr>
         <tr><th>Admin notification email</th><td><input type="email" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[admin_email]" value="<?php echo esc_attr($s['admin_email']); ?>"></td></tr>
         <tr><th>Frontend language</th><td><select name="<?php echo esc_attr(self::OPTION_KEY); ?>[language]"><option value="auto" <?php selected($s['language'],'auto'); ?>>Auto-detect WPML/Polylang/site locale</option><?php foreach(['en','el','es','hu'] as $l){ echo '<option value="'.esc_attr($l).'" '.selected($s['language'],$l,false).'>'.esc_html($trans[$l]['language_name']).' ('.esc_html($l).')</option>'; } ?></select></td></tr>
-        <tr><th>Button label override</th><td><input type="text" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[button_label_override]" value="<?php echo esc_attr($s['button_label_override']); ?>"><p class="description">Leave empty to use translated label.</p></td></tr>
+        <tr><th>Withdrawal action label</th><td><input type="text" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[withdrawal_action_label]" value="<?php echo esc_attr($s['withdrawal_action_label'] ?: ($s['button_label_override'] ?? '')); ?>"><p class="description">Shown on customer-facing withdrawal links and buttons. Leave empty to use the translated default label.</p></td></tr>
         <tr><th>Form display and helper text</th><td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[hide_form_heading]" value="yes" <?php checked($s['hide_form_heading'],'yes'); ?>> Hide plugin form heading</label><p class="description">Use this if your page/theme already displays a suitable page heading.</p><p><label>Before form text<br><textarea class="large-text" rows="4" name="<?php echo esc_attr(self::OPTION_KEY); ?>[before_form_text]" placeholder="<?php echo esc_attr($this->default_form_helper_text('before')); ?>"><?php echo esc_textarea($s['before_form_text'] ?? ''); ?></textarea></label></p><p class="description">Shown above the withdrawal form. Leave empty to use the localized default helper text.</p><p><label>After form text<br><textarea class="large-text" rows="4" name="<?php echo esc_attr(self::OPTION_KEY); ?>[after_form_text]" placeholder="<?php echo esc_attr($this->default_form_helper_text('after')); ?>"><?php echo esc_textarea($s['after_form_text'] ?? ''); ?></textarea></label></p><p class="description">Shown below the withdrawal form. Basic safe formatting is allowed; scripts and unsafe HTML are stripped.</p></td></tr>
         <tr><th>Custom button classes</th><td><p class="description">Optional CSS classes are appended after the default WooCommerce/WordPress button classes. Use class names only; HTML, scripts, inline styles, and attributes are stripped.</p><?php foreach(self::custom_button_class_fields() as $key=>$label){ echo '<p><label>'.esc_html($label).'<br><input type="text" class="regular-text" name="'.esc_attr(self::OPTION_KEY).'['.esc_attr($key).']" value="'.esc_attr($s[$key] ?? '').'" placeholder="my-custom-class"></label></p>'; } ?><p class="description">My Account &gt; Orders action classes are generated by the WooCommerce account orders template, so the plugin leaves those default template classes unchanged.</p></td></tr>
         <tr><th>Eligibility window</th><td><input type="number" min="0" step="1" name="<?php echo esc_attr(self::OPTION_KEY); ?>[eligibility_days]" value="<?php echo esc_attr($s['eligibility_days']); ?>"> days <p class="description">0 disables date limit. Default EU withdrawal period is commonly 14 days; confirm legal wording with counsel.</p></td></tr>

@@ -9,7 +9,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         wp_register_style('ewb-inline', false, [], self::VERSION); wp_enqueue_style('ewb-inline'); wp_add_inline_style('ewb-inline', $css);
     }
 
-    protected function button_label(): string { $s=$this->get_settings(); return $s['button_label_override'] ?: $this->t('button_label'); }
+    protected function button_label(): string { $s=$this->get_settings(); return $s['withdrawal_action_label'] ?: ($s['button_label_override'] ?: $this->t('button_label')); }
     protected function button_classes(string $context,string $extra=''): string { return $this->frontend_button_classes($context, trim('woocommerce-button button '.$extra)); }
     protected function render_form_heading(): void { if($this->get_settings()['hide_form_heading']!=='yes'){ echo '<h2 class="ewb-form-heading">'.esc_html($this->t('form_title')).'</h2>'; } }
     protected function render_form_helper_text(string $position): void { $text=$this->form_helper_text($position); if($text!==''){ echo '<div class="ewb-form-helper ewb-form-helper-'.esc_attr($position).'">'.wp_kses_post(wpautop($text)).'</div>'; } }
