@@ -84,6 +84,16 @@ woocommerce-button button alt
 - `wpml-config.xml` is included.
 - WPML/Polylang translated page URL handling should be tested per site.
 
+## Privacy
+
+The plugin registers WordPress personal data exporter and eraser callbacks for EU Withdrawal Requests. Requests are matched by customer email address.
+
+The exporter includes customer-facing withdrawal request details: request ID, reference code, related WooCommerce order ID/number, customer name, customer email, submitted date/time, request status, selected products/items, customer message/declaration, and stored language/locale. Internal-only proof hash values are not exposed in the customer export.
+
+The eraser anonymizes direct personal fields on matching withdrawal requests: customer name, customer email, customer comments/message, IP address, user agent, and request title text. It does not delete withdrawal request posts by default.
+
+Order-linked audit data is intentionally retained after anonymization: WooCommerce order ID/number, selected products/items, submitted date/time, workflow status, language/locale, reference code, and proof hash. This keeps the admin workflow, order notes, and legal/integrity proof usable after the personal fields are anonymized.
+
 ## Development
 
 Basic syntax check:
