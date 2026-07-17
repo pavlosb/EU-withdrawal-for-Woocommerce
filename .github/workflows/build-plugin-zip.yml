@@ -1,0 +1,65 @@
+name: Build plugin ZIP
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build distributable ZIP
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Read plugin version
+        id: plugin
+        shell: bash
+        run: |
+          VERSION="$(grep -E '^[[:space:]]*\*[[:space:]]*Version:' eu-withdrawal-button.php | head -n 1 | sed -E 's/.*Version:[[:space:]]*//; s/[[:space:]]*$//')"
+
+          if [ -z "$VERSION" ]; then
+            echo "Unable to determine plugin version from eu-withdrawal-button.php" >&2
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "zip_name=eu-withdrawal-button-$VERSION.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Stage runtime plugin files
+        shell: bash
+        run: |
+          rm -rf build
+          mkdir -p build/eu-withdrawal-button
+
+          cp eu-withdrawal-button.php build/eu-withdrawal-button/
+          cp readme.txt build/eu-withdrawal-button/
+
+          if [ -f wpml-config.xml ]; then
+            cp wpml-config.xml build/eu-withdrawal-button/
+          fi
+
+          for dir in includes assets languages templates; do
+            if [ -d "$dir" ]; then
+              cp -R "$dir" build/eu-withdrawal-button/
+            fi
+          done
+
+      - name: Create plugin ZIP
+        shell: bash
+        run: |
+          cd build
+          zip -r "../${{ steps.plugin.outputs.zip_name }}" eu-withdrawal-button
+
+      - name: Upload plugin ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: eu-withdrawal-button-${{ steps.plugin.outputs.version }}
+          path: ${{ steps.plugin.outputs.zip_name }}
+          if-no-files-found: error
