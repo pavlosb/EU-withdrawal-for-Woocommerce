@@ -4,7 +4,7 @@ Tags: woocommerce, withdrawal, returns, eu, wpml
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.5.1
+Stable tag: 0.5.2
 License: GPLv2 or later
 
 EU-style online withdrawal / cancel contract flow for WooCommerce.
@@ -13,6 +13,12 @@ EU-style online withdrawal / cancel contract flow for WooCommerce.
 Adds a multilingual online withdrawal form for WooCommerce orders, customer confirmation email, admin notification, admin workflow records, CSV export, PDF receipt, guest order lookup, eligibility/exclusion rules, and optional WooCommerce order status update to "Withdrawal requested".
 
 == Changelog ==
+= 0.5.2 =
+* Added pending/actionable withdrawal count badge to the WooCommerce > Withdrawals admin submenu.
+* Added admin setting for customizing the customer-facing withdrawal action label/title.
+* Preserved existing multilingual default labels when the custom action label setting is empty.
+* Preserved existing shortcode/button behavior and custom button class settings.
+
 = 0.5.1 =
 * Updated withdrawal emails to use the WooCommerce configured sender where available.
 * Added customer-friendly reference codes for customer email/PDF receipts while preserving the internal proof hash for admin audit details.
