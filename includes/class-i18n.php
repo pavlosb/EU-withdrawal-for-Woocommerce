@@ -44,14 +44,17 @@ abstract class EU_Withdrawal_Button_I18n {
     protected function translated_page_id_for_lang(int $page_id,string $lang): int {
         if (!$page_id) { return 0; }
         $lang = $this->normalize_lang($lang);
-        $wpml_id = apply_filters('wpml_object_id', $page_id, 'page', true, $lang);
-        if ($wpml_id) { return (int)$wpml_id; }
+        if (has_filter('wpml_object_id')) {
+            $wpml_id = apply_filters('wpml_object_id', $page_id, 'page', true, $lang);
+            if ($wpml_id) { return (int)$wpml_id; }
+        }
         if (function_exists('pll_get_post')) { $pll_id = pll_get_post($page_id, $lang); if ($pll_id) { return (int)$pll_id; } }
         return $page_id;
     }
 
     protected function translated_permalink_for_lang(string $url,string $lang): string {
         if ($url === '') { return ''; }
+        if (!has_filter('wpml_permalink')) { return $url; }
         $wpml_url = apply_filters('wpml_permalink', $url, $this->normalize_lang($lang), true);
         return is_string($wpml_url) && $wpml_url !== '' ? $wpml_url : $url;
     }
