@@ -37,9 +37,19 @@ abstract class EU_Withdrawal_Button_Emails extends EU_Withdrawal_Button_PDF {
         return $items ? '<ul><li>'.implode('</li><li>', $items).'</li></ul>' : '';
     }
 
-    protected function email_template_placeholders(int $post_id,array $meta,bool $allow_proof_hash): array {
+    protected function email_withdrawal_url(array $meta): string {
+        $settings = $this->get_settings();
+        $page_id = !empty($settings['page_id']) ? (int)$settings['page_id'] : 0;
+        $url = $page_id ? get_permalink($page_id) : home_url('/withdrawal-cancel-contract/');
+        if(!$url){ $url = home_url('/withdrawal-cancel-contract/'); }
+        $wpml_url = apply_filters('wpml_permalink', $url, $this->email_template_language($meta), true);
+        if(is_string($wpml_url) && $wpml_url){ $url = $wpml_url; }
         $order = !empty($meta['order_id']) ? wc_get_order((int)$meta['order_id']) : false;
-        $withdrawal_url = method_exists($this, 'page_url') ? $this->page_url($order instanceof WC_Order ? $order : null) : home_url('/withdrawal-cancel-contract/');
+        if($order instanceof WC_Order){ $url = add_query_arg(['order_id'=>$order->get_id(),'order_key'=>$order->get_order_key()], $url); }
+        return $url;
+    }
+
+    protected function email_template_placeholders(int $post_id,array $meta,bool $allow_proof_hash): array {
         $status = sanitize_key($meta['status'] ?? 'submitted');
         $status_label_key = 'status_'.str_replace('-', '_', $status);
         $status_label = $this->t($status_label_key);
@@ -53,7 +63,7 @@ abstract class EU_Withdrawal_Button_Emails extends EU_Withdrawal_Button_PDF {
             '{submitted_at}' => esc_html((string)($meta['submitted_at'] ?? '')),
             '{withdrawal_status}' => esc_html($status_label),
             '{reference_code}' => esc_html((string)($meta['reference_code'] ?? $post_id)),
-            '{withdrawal_url}' => esc_url($withdrawal_url),
+            '{withdrawal_url}' => esc_url($this->email_withdrawal_url($meta)),
             '{site_name}' => esc_html(wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES)),
             '{proof_hash}' => $allow_proof_hash ? esc_html((string)($meta['proof_hash'] ?? '')) : '',
         ];
