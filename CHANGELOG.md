@@ -2,6 +2,7 @@
 
 ## 0.5.2 - Testing build
 
+- Moved plugin settings to WooCommerce > Settings > EU Withdrawal while keeping the old settings URL as a redirect.
 - Added pending/actionable withdrawal count badge to the WooCommerce > Withdrawals admin submenu.
 - Added admin setting for customizing the customer-facing withdrawal action label/title.
 - Preserved existing multilingual default labels when the custom action label setting is empty.

@@ -25,6 +25,9 @@ final class EU_Withdrawal_Button_Plugin extends EU_Withdrawal_Button_Admin {
         add_action('admin_menu', [$this, 'admin_menu']);
         add_action('admin_menu', [$this, 'add_withdrawals_menu_badge'], 99);
         add_action('admin_init', [$this, 'register_settings']);
+        add_filter('woocommerce_settings_tabs_array', [$this, 'add_woocommerce_settings_tab'], 50);
+        add_action('woocommerce_settings_tabs_ewb_withdrawal', [$this, 'output_woocommerce_settings_tab']);
+        add_action('woocommerce_update_options_ewb_withdrawal', [$this, 'save_woocommerce_settings_tab']);
         add_action('admin_post_ewb_export_csv', [$this, 'export_csv']);
         add_action('admin_post_ewb_send_test_email', [$this, 'send_test_email']);
         add_filter('manage_' . self::CPT . '_posts_columns', [$this, 'admin_columns']);
