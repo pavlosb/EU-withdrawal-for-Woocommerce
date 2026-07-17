@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.3 - Testing build
+
+- Moved plugin settings to the new standard settings location implemented in the latest merged PR.
+- Added GitHub Actions workflow to build distributable plugin ZIP artifacts.
+- Preserved existing option keys, saved settings, frontend behavior, emails, PDF fallback, order status behavior, admin workflow, menu badge, custom classes, and action label behavior.
+
 ## 0.5.2 - Testing build
 
 - Moved plugin settings to WooCommerce > Settings > EU Withdrawal while keeping the old settings URL as a redirect.
