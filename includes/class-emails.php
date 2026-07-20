@@ -38,12 +38,8 @@ abstract class EU_Withdrawal_Button_Emails extends EU_Withdrawal_Button_PDF {
     }
 
     protected function email_withdrawal_url(array $meta): string {
-        $settings = $this->get_settings();
-        $page_id = !empty($settings['page_id']) ? (int)$settings['page_id'] : 0;
-        $url = $page_id ? get_permalink($page_id) : home_url('/withdrawal-cancel-contract/');
+        $url = $this->withdrawal_page_url_for_lang($this->email_template_language($meta));
         if(!$url){ $url = home_url('/withdrawal-cancel-contract/'); }
-        $wpml_url = apply_filters('wpml_permalink', $url, $this->email_template_language($meta), true);
-        if(is_string($wpml_url) && $wpml_url){ $url = $wpml_url; }
         $order = !empty($meta['order_id']) ? wc_get_order((int)$meta['order_id']) : false;
         if($order instanceof WC_Order){ $url = add_query_arg(['order_id'=>$order->get_id(),'order_key'=>$order->get_order_key()], $url); }
         return $url;

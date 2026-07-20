@@ -80,8 +80,13 @@ woocommerce-button button alt
 
 - Customer-facing languages currently supported: `en`, `el`, `es`, `hu`.
 - Withdrawal Requests should not be translated.
-- Request meta should be copied.
+- Request meta should be copied/stored as audit data, not translated content.
 - `wpml-config.xml` is included.
+- My Account order actions, order details buttons, shortcode buttons, and email withdrawal links resolve the translated Withdrawal page when WPML/Polylang provides one.
+- If a translated Withdrawal page is missing, the plugin falls back to the configured default Withdrawal page.
+- Customer confirmation emails use the frontend/request language, including configurable multilingual templates when present.
+- Admin notification emails also use the stored request/frontend language for translated labels and configured admin templates, so the admin audit email matches the customer-facing request language.
+- If no multilingual plugin is active, the fixed plugin language setting is used when configured; otherwise the site locale is used.
 - WPML/Polylang translated page URL handling should be tested per site.
 
 ## Privacy

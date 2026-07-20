@@ -12,7 +12,16 @@
     <custom-field action="copy">_ewb_submitted_at</custom-field>
     <custom-field action="copy">_ewb_language</custom-field>
     <custom-field action="copy">_ewb_status</custom-field>
+    <custom-field action="copy">_ewb_reference_code</custom-field>
     <custom-field action="copy">_ewb_proof_hash</custom-field>
     <custom-field action="copy">_ewb_previous_order_status</custom-field>
+    <custom-field action="copy">_ewb_order_status_changed</custom-field>
+    <custom-field action="copy">_ewb_order_status_error</custom-field>
+    <custom-field action="copy">_ewb_customer_email_sent</custom-field>
+    <custom-field action="copy">_ewb_admin_email_sent</custom-field>
+    <custom-field action="copy">_ewb_email_attempted_at</custom-field>
+    <custom-field action="copy">_ewb_email_error</custom-field>
+    <custom-field action="copy">_ewb_pdf_receipt_skipped</custom-field>
+    <custom-field action="copy">_ewb_internal_note</custom-field>
   </custom-fields>
 </wpml-config>

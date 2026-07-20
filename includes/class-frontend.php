@@ -13,20 +13,9 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
     protected function button_classes(string $context,string $extra=''): string { return $this->frontend_button_classes($context, trim('woocommerce-button button '.$extra)); }
     protected function render_form_heading(): void { if($this->get_settings()['hide_form_heading']!=='yes'){ echo '<h2 class="ewb-form-heading">'.esc_html($this->t('form_title')).'</h2>'; } }
     protected function render_form_helper_text(string $position): void { $text=$this->form_helper_text($position); if($text!==''){ echo '<div class="ewb-form-helper ewb-form-helper-'.esc_attr($position).'">'.wp_kses_post(wpautop($text)).'</div>'; } }
-    protected function translated_page_id(int $page_id): int {
-        if (!$page_id) { return 0; }
-        $lang = $this->current_lang();
-        $wpml_id = apply_filters('wpml_object_id', $page_id, 'page', true, $lang);
-        if ($wpml_id) { return (int)$wpml_id; }
-        if (function_exists('pll_get_post')) { $pll_id = pll_get_post($page_id, $lang); if ($pll_id) { return (int)$pll_id; } }
-        return $page_id;
-    }
+    protected function translated_page_id(int $page_id): int { return $this->translated_page_id_for_lang($page_id, $this->current_lang()); }
     protected function page_url($order=null): string {
-        $s=$this->get_settings();
-        $page_id = !empty($s['page_id']) ? $this->translated_page_id((int)$s['page_id']) : 0;
-        $url=$page_id ? get_permalink($page_id) : home_url('/withdrawal-cancel-contract/');
-        $wpml_url = apply_filters('wpml_permalink', $url, $this->current_lang(), true);
-        if (is_string($wpml_url) && $wpml_url) { $url = $wpml_url; }
+        $url = $this->withdrawal_page_url_for_lang($this->current_lang());
         if($order instanceof WC_Order){ $url=add_query_arg(['order_id'=>$order->get_id(),'order_key'=>$order->get_order_key()],$url); }
         return $url;
     }

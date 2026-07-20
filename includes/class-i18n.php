@@ -41,6 +41,32 @@ abstract class EU_Withdrawal_Button_I18n {
         return $this->normalize_lang(get_locale());
     }
 
+    protected function translated_page_id_for_lang(int $page_id,string $lang): int {
+        if (!$page_id) { return 0; }
+        $lang = $this->normalize_lang($lang);
+        if (has_filter('wpml_object_id')) {
+            $wpml_id = apply_filters('wpml_object_id', $page_id, 'page', true, $lang);
+            if ($wpml_id) { return (int)$wpml_id; }
+        }
+        if (function_exists('pll_get_post')) { $pll_id = pll_get_post($page_id, $lang); if ($pll_id) { return (int)$pll_id; } }
+        return $page_id;
+    }
+
+    protected function translated_permalink_for_lang(string $url,string $lang): string {
+        if ($url === '') { return ''; }
+        if (!has_filter('wpml_permalink')) { return $url; }
+        $wpml_url = apply_filters('wpml_permalink', $url, $this->normalize_lang($lang), true);
+        return is_string($wpml_url) && $wpml_url !== '' ? $wpml_url : $url;
+    }
+
+    protected function withdrawal_page_url_for_lang(string $lang): string {
+        $settings = $this->get_settings();
+        $page_id = !empty($settings['page_id']) ? $this->translated_page_id_for_lang((int)$settings['page_id'], $lang) : 0;
+        $url = $page_id ? (string)get_permalink($page_id) : home_url('/withdrawal-cancel-contract/');
+        if ($url === '') { $url = home_url('/withdrawal-cancel-contract/'); }
+        return $this->translated_permalink_for_lang($url, $lang);
+    }
+
     protected function t(string $key): string {
         $all = $this->translations(); $lang = $this->current_lang();
         return $all[$lang][$key] ?? $all['en'][$key] ?? $key;

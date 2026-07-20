@@ -70,15 +70,49 @@ Use this checklist on a staging WooCommerce site before installing the plugin on
 - Previous order status is stored.
 - Existing order processing/refund workflows are not broken.
 
-## Multilingual / WPML
+## Multilingual / WPML / Polylang
 
-- English frontend labels work.
-- Greek frontend labels work.
-- Spanish frontend labels work.
-- Hungarian frontend labels work.
-- WPML language URL resolves to the translated/current language page.
-- Withdrawal Requests are not translatable.
-- Request meta is copied, not translated.
+### Baseline without a multilingual plugin
+
+- Disable WPML and Polylang.
+- Set plugin language to **Auto** and confirm the site locale controls frontend labels.
+- Set plugin language explicitly to English, Greek, Spanish, and Hungarian, one at a time.
+- Confirm `[eu_withdrawal_form]`, `[eu_withdrawal_button]`, My Account order actions, order details buttons, and WooCommerce email withdrawal links use the fixed plugin language fallback without fatal errors.
+- Submit one request per fixed language and confirm `_ewb_language` stores the normalized language code used for the frontend/customer email.
+
+### Shared page setup
+
+- Create/translate the Withdrawal page for English, Greek, Spanish, and Hungarian.
+- Add `[eu_withdrawal_form]` to each translated Withdrawal page.
+- Select the default-language Withdrawal page in plugin settings.
+- Confirm missing translated pages fall back safely to the configured default page instead of causing a fatal error or broken link.
+
+### WPML-specific checks
+
+- Activate WPML only.
+- Confirm `ewb_withdrawal` / Withdrawal Requests remain non-translatable in WPML settings.
+- Confirm WPML reads `wpml-config.xml` and treats request meta as copied audit data, not translated content.
+- For English, Greek, Spanish, and Hungarian storefront languages, confirm the My Account > Orders withdrawal action URL points to the matching translated Withdrawal page and keeps `order_id`/`order_key` query args.
+- For English, Greek, Spanish, and Hungarian storefront languages, confirm the order details withdrawal button URL points to the matching translated Withdrawal page and keeps `order_id`/`order_key` query args.
+- For English, Greek, Spanish, and Hungarian order emails, confirm the WooCommerce email withdrawal link points to the matching translated Withdrawal page.
+- For English, Greek, Spanish, and Hungarian direct Withdrawal pages, confirm order-number/billing-email lookup works and labels match the current language.
+- For English, Greek, Spanish, and Hungarian guest lookup, confirm manual-product submission works and request language is stored.
+- Submit a request from each storefront language and confirm customer confirmation email subject/body use that language, including configured multilingual templates when present.
+- Confirm admin notification email uses the stored request/frontend language for translated labels and configured admin templates. This keeps the audit email tied to the customer-facing language.
+- Confirm status, reference code, proof hash, order ID/number, products, submitted time, and language meta remain stable audit data across languages.
+
+### Polylang-specific checks
+
+- Activate Polylang only.
+- Confirm Withdrawal Requests remain a non-translated/admin-only request record. If Polylang exposes the post type in settings, leave it disabled for translation.
+- For English, Greek, Spanish, and Hungarian storefront languages, confirm the My Account > Orders withdrawal action URL points to the matching translated Withdrawal page and keeps `order_id`/`order_key` query args.
+- For English, Greek, Spanish, and Hungarian storefront languages, confirm the order details withdrawal button URL points to the matching translated Withdrawal page and keeps `order_id`/`order_key` query args.
+- For English, Greek, Spanish, and Hungarian order emails, confirm the WooCommerce email withdrawal link points to the matching translated Withdrawal page.
+- For English, Greek, Spanish, and Hungarian direct Withdrawal pages, confirm order-number/billing-email lookup works and labels match the current language.
+- For English, Greek, Spanish, and Hungarian guest lookup, confirm manual-product submission works and request language is stored.
+- Submit a request from each storefront language and confirm customer confirmation email subject/body use that language, including configured multilingual templates when present.
+- Confirm admin notification email uses the stored request/frontend language for translated labels and configured admin templates. This keeps the audit email tied to the customer-facing language.
+- Confirm status, reference code, proof hash, order ID/number, products, submitted time, and language meta remain stable audit data across languages.
 
 ## CSS/theme compatibility
 
