@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.5.4 - Testing build
+
+### New features
+
+- Added configurable multilingual customer and admin email templates.
+- Added WordPress Privacy Tools integration:
+  - Personal Data Exporter.
+  - Personal Data Eraser / anonymization support.
+- Improved WPML and Polylang compatibility.
+- Improved multilingual language detection and translated Withdrawal page URL handling.
+- Added multilingual compatibility testing documentation.
+
+### Improvements
+
+- Preserved configurable customer-facing reference codes.
+- Preserved configurable email placeholders.
+- Preserved WooCommerce sender integration.
+- Preserved Unicode PDF fallback behavior.
+- Preserved privacy-safe audit trail.
+- Preserved existing order workflow, admin workflow, and request integrity.
+
+### Compatibility
+
+- WordPress Privacy Tools.
+- WooCommerce.
+- WPML.
+- Polylang.
+- PHP 7.4+.
+
 ## 0.5.3 - Testing build
 
 - Improved WPML/Polylang compatibility for translated Withdrawal page URLs in email links and documented multilingual test coverage.
