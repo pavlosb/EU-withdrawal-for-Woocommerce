@@ -19,11 +19,11 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         if($order instanceof WC_Order){ $url=add_query_arg(['order_id'=>$order->get_id(),'order_key'=>$order->get_order_key()],$url); }
         return $url;
     }
-    public function shortcode_button(): string { return '<a class="'.esc_attr($this->button_classes('shortcode_button')).'" href="'.esc_url($this->page_url()).'">'.esc_html($this->button_label()).'</a>'; }
+    public function shortcode_button(): string { if(!$this->current_user_can_withdraw_by_role()){ return ''; } return '<a class="'.esc_attr($this->button_classes('shortcode_button')).'" href="'.esc_url($this->page_url()).'">'.esc_html($this->button_label()).'</a>'; }
 
-    public function add_order_action(array $actions,$order): array { if($order instanceof WC_Order && $this->is_order_eligible($order) && $this->eligible_items($order)){ $actions['ewb_withdrawal']=['url'=>$this->page_url($order),'name'=>$this->button_label()]; } return $actions; }
-    public function order_details_button($order): void { if($order instanceof WC_Order && $this->is_order_eligible($order) && $this->eligible_items($order)){ echo '<p><a class="'.esc_attr($this->button_classes('order_details')).'" href="'.esc_url($this->page_url($order)).'">'.esc_html($this->button_label()).'</a></p>'; } }
-    public function email_withdrawal_link($order,$sent_to_admin,$plain_text,$email): void { $s=$this->get_settings(); if($sent_to_admin || $s['show_in_order_emails']!=='yes' || !$order instanceof WC_Order || !$this->is_order_eligible($order)){ return; } $url=$this->page_url($order); if($plain_text){ echo "\n".$this->button_label().': '.esc_url_raw($url)."\n"; } else { echo '<p><a class="'.esc_attr($this->button_classes('email_link')).'" href="'.esc_url($url).'">'.esc_html($this->button_label()).'</a></p>'; } }
+    public function add_order_action(array $actions,$order): array { if($order instanceof WC_Order && $this->current_user_can_withdraw_by_role() && $this->is_order_eligible($order) && $this->eligible_items($order)){ $actions['ewb_withdrawal']=['url'=>$this->page_url($order),'name'=>$this->button_label()]; } return $actions; }
+    public function order_details_button($order): void { if($order instanceof WC_Order && $this->current_user_can_withdraw_by_role() && $this->is_order_eligible($order) && $this->eligible_items($order)){ echo '<p><a class="'.esc_attr($this->button_classes('order_details')).'" href="'.esc_url($this->page_url($order)).'">'.esc_html($this->button_label()).'</a></p>'; } }
+    public function email_withdrawal_link($order,$sent_to_admin,$plain_text,$email): void { $s=$this->get_settings(); if($sent_to_admin || $s['show_in_order_emails']!=='yes' || !$order instanceof WC_Order || !$this->user_can_withdraw_by_role((int)$order->get_user_id()) || !$this->is_order_eligible($order)){ return; } $url=$this->page_url($order); if($plain_text){ echo "\n".$this->button_label().': '.esc_url_raw($url)."\n"; } else { echo '<p><a class="'.esc_attr($this->button_classes('email_link')).'" href="'.esc_url($url).'">'.esc_html($this->button_label()).'</a></p>'; } }
 
     protected function resolve_order_from_request(){
         $order_id=isset($_GET['order_id'])?absint($_GET['order_id']):(isset($_POST['ewb_order_id'])?absint($_POST['ewb_order_id']):0);
@@ -57,6 +57,9 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
 
     public function shortcode_form(): string {
         if(!class_exists('WooCommerce')){ ob_start(); echo '<div class="ewb-form-wrap">'; $this->render_form_heading(); echo '<div class="ewb-message">WooCommerce is required.</div></div>'; return ob_get_clean(); }
+        if(!$this->current_user_can_withdraw_by_role()){
+            ob_start(); echo '<div class="ewb-form-wrap">'; $this->render_form_heading(); echo '<div class="ewb-message">'.esc_html($this->withdrawal_role_unavailable_message()).'</div></div>'; return ob_get_clean();
+        }
         $message='';
         $render_form = true;
         $order=$this->resolve_order_from_request();
@@ -170,6 +173,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
     }
 
     protected function validate_data(array $d): string {
+        if(!$this->current_user_can_withdraw_by_role()){ return $this->withdrawal_role_unavailable_message(); }
         if(!isset($_POST['ewb_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['ewb_nonce'])), self::NONCE_ACTION)){ return $this->t('security_failed'); }
         if(!$d['name'] || !is_email($d['email']) || !$d['order_number'] || !$d['products'] || !$d['declaration']){ return $this->t('required_fields'); }
         if($d['order_id']){ $order=wc_get_order($d['order_id']); if(!$order || !hash_equals($order->get_order_key(),$d['order_key']) || !$this->is_order_eligible($order)){ return $this->t('order_not_verified'); } }

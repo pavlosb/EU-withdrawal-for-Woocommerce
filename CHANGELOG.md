@@ -4,6 +4,7 @@
 
 ### New features
 
+- Added role-based withdrawal availability settings for controlling logged-in customer access by WordPress/WooCommerce role.
 - Added configurable multilingual customer and admin email templates.
 - Added WordPress Privacy Tools integration:
   - Personal Data Exporter.

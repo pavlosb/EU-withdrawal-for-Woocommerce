@@ -76,6 +76,18 @@ woocommerce-button button
 woocommerce-button button alt
 ```
 
+## Withdrawal availability by role
+
+Merchants can control logged-in customer access under **WooCommerce > Settings > EU Withdrawal** using **Withdrawal availability by role**.
+
+- **All roles can withdraw** preserves the default/current behavior.
+- **Only selected roles can withdraw** allows logged-in users when at least one of their roles is selected.
+- **Selected roles cannot withdraw** blocks logged-in users when any of their roles is selected.
+- Guest lookup is still controlled separately by the existing guest lookup setting.
+- Custom roles registered by WordPress, WooCommerce, membership, wholesale, B2B, or partner plugins appear automatically in the role checklist.
+
+The role rule hides plugin-generated customer-facing withdrawal links/buttons and is also enforced during direct form access, review, and submission.
+
 ## WPML / multilingual notes
 
 - Customer-facing languages currently supported: `en`, `el`, `es`, `hu`.
