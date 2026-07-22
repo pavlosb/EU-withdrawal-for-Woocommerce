@@ -39,6 +39,18 @@ Use this checklist on a staging WooCommerce site before installing the plugin on
 - Two-step confirmation works.
 - Submission creates exactly one request.
 
+## Role-based withdrawal availability
+
+- With **All roles can withdraw**, confirm existing logged-in customer and guest behavior is unchanged.
+- With **Only selected roles can withdraw** and `customer` selected, confirm customer users can see My Account > Orders withdrawal actions, order details buttons, shortcode buttons, and can submit requests.
+- With **Only selected roles can withdraw** and `customer` selected, confirm an unselected logged-in role cannot see plugin-generated withdrawal links/buttons and sees a friendly unavailable message on direct Withdrawal page access.
+- With **Selected roles cannot withdraw** and a custom role such as `registered_partner`, `wholesale_customer`, or a B2B/partner role selected, confirm that role cannot see plugin-generated withdrawal links/buttons and cannot submit by direct POST.
+- For a user with multiple roles, confirm include mode allows withdrawal if any user role is selected and exclude mode blocks withdrawal if any user role is selected.
+- Confirm guest lookup is controlled by the existing guest lookup setting and is not blocked by role rules.
+- Confirm WooCommerce customer order emails do not show withdrawal links for registered order owners whose roles are disallowed.
+- Confirm admin/shop manager access to WooCommerce > Withdrawals, workflow actions, CSV export, and settings is not blocked by frontend role availability rules.
+- Confirm invalid or deleted roles saved in settings are ignored safely after role changes.
+
 ## Email flow
 
 - Order confirmation email contains the withdrawal link when enabled.

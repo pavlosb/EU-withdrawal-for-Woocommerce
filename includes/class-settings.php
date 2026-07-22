@@ -13,6 +13,8 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'css_mode' => 'theme',
             'require_two_step' => 'yes',
             'allow_guest_lookup' => 'yes',
+            'role_availability_mode' => 'all',
+            'role_availability_roles' => [],
             'attach_pdf_receipt' => 'yes',
             'excluded_product_ids' => '',
             'excluded_category_ids' => [],
@@ -42,6 +44,9 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
     protected function get_settings(): array {
         $settings = wp_parse_args(get_option(self::OPTION_KEY, []), self::default_settings_static());
         $settings['email_templates'] = self::normalize_email_templates($settings['email_templates'] ?? []);
+        $mode = sanitize_key($settings['role_availability_mode'] ?? 'all');
+        $settings['role_availability_mode'] = in_array($mode, ['all','include','exclude'], true) ? $mode : 'all';
+        $settings['role_availability_roles'] = $this->sanitize_availability_roles($settings['role_availability_roles'] ?? []);
         return $settings;
     }
 
@@ -214,11 +219,52 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         return self::sanitize_helper_text($text);
     }
 
+    protected function availability_role_options(): array {
+        $roles = wp_roles();
+        if(!$roles || empty($roles->roles) || !is_array($roles->roles)){ return []; }
+        $out = [];
+        foreach($roles->roles as $key=>$role){
+            $out[sanitize_key($key)] = translate_user_role($role['name'] ?? $key);
+        }
+        natcasesort($out);
+        return $out;
+    }
+
+    protected function sanitize_availability_roles($roles): array {
+        $roles = array_map('sanitize_key', (array)$roles);
+        $valid = array_keys($this->availability_role_options());
+        return array_values(array_intersect(array_unique($roles), $valid));
+    }
+
+    protected function user_can_withdraw_by_role(int $user_id=0): bool {
+        if(!$user_id){ return true; }
+        $settings = $this->get_settings();
+        $mode = sanitize_key($settings['role_availability_mode'] ?? 'all');
+        if($mode === 'all'){ return true; }
+        $selected = $this->sanitize_availability_roles($settings['role_availability_roles'] ?? []);
+        $user = get_userdata($user_id);
+        if(!$user){ return false; }
+        $roles = array_map('sanitize_key', (array)$user->roles);
+        $has_match = (bool)array_intersect($roles, $selected);
+        if($mode === 'include'){ return $has_match; }
+        if($mode === 'exclude'){ return !$has_match; }
+        return true;
+    }
+
+    protected function current_user_can_withdraw_by_role(): bool {
+        return $this->user_can_withdraw_by_role(is_user_logged_in() ? get_current_user_id() : 0);
+    }
+
+    protected function withdrawal_role_unavailable_message(): string {
+        return __('Withdrawal requests are not available for your account type. Please contact us if you need help with this order.', 'eu-withdrawal-button');
+    }
+
     public function sanitize_settings($input): array {
         $d = self::default_settings_static();
         $existing = get_option(self::OPTION_KEY, []);
         $lang = sanitize_text_field($input['language'] ?? 'auto'); if (!in_array($lang, ['auto','en','el','es','hu'], true)) { $lang='auto'; }
         $css = sanitize_text_field($input['css_mode'] ?? 'theme'); if (!in_array($css, ['theme','none'], true)) { $css='theme'; }
+        $role_mode = sanitize_key($input['role_availability_mode'] ?? 'all'); if(!in_array($role_mode, ['all','include','exclude'], true)){ $role_mode='all'; }
         $statuses = array_map('sanitize_key', (array)($input['allowed_statuses'] ?? $d['allowed_statuses']));
         $valid_statuses = array_map(static function($key){ return str_replace('wc-', '', $key); }, array_keys(wc_get_order_statuses()));
         $statuses = array_values(array_intersect($statuses, $valid_statuses));
@@ -234,6 +280,8 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'css_mode'=>$css,
             'require_two_step'=>!empty($input['require_two_step'])?'yes':'no',
             'allow_guest_lookup'=>!empty($input['allow_guest_lookup'])?'yes':'no',
+            'role_availability_mode'=>$role_mode,
+            'role_availability_roles'=>$this->sanitize_availability_roles($input['role_availability_roles'] ?? []),
             'attach_pdf_receipt'=>!empty($input['attach_pdf_receipt'])?'yes':'no',
             'excluded_product_ids'=>sanitize_text_field($input['excluded_product_ids'] ?? ''),
             'excluded_category_ids'=>array_map('absint', (array)($input['excluded_category_ids'] ?? [])),
@@ -264,6 +312,8 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
     protected function render_settings_fields(): void {
         $s=$this->get_settings(); $pages=get_pages(['sort_column'=>'post_title']); $trans=$this->translations(); $cats=get_terms(['taxonomy'=>'product_cat','hide_empty'=>false]);
         $email_templates = self::normalize_email_templates($s['email_templates'] ?? []);
+        $role_options = $this->availability_role_options();
+        $selected_roles = $this->sanitize_availability_roles($s['role_availability_roles'] ?? []);
         $customer_placeholders = ['{request_id}','{order_number}','{customer_name}','{customer_email}','{products}','{submitted_at}','{withdrawal_status}','{reference_code}','{withdrawal_url}','{site_name}'];
         $admin_placeholders = array_merge($customer_placeholders, ['{proof_hash}']);
         ?>
@@ -282,6 +332,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         <tr><th>Allowed order statuses</th><td><?php foreach(wc_get_order_statuses() as $key=>$label){ $key=str_replace('wc-','',$key); echo '<label style="display:block"><input type="checkbox" name="'.esc_attr(self::OPTION_KEY).'[allowed_statuses][]" value="'.esc_attr($key).'" '.checked(in_array($key,(array)$s['allowed_statuses'],true),true,false).'> '.esc_html($label).'</label>'; } ?></td></tr>
         <tr><th>Display / CSS</th><td><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[css_mode]" value="theme" <?php checked($s['css_mode'],'theme'); ?>> Minimal structural CSS, inherit site/theme styles</label><br><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[css_mode]" value="none" <?php checked($s['css_mode'],'none'); ?>> No frontend CSS</label></td></tr>
         <tr><th>Flow</th><td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[require_two_step]" value="yes" <?php checked($s['require_two_step'],'yes'); ?>> Require review/confirmation step</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[allow_guest_lookup]" value="yes" <?php checked($s['allow_guest_lookup'],'yes'); ?>> Allow guest lookup by order number + billing email</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[show_in_order_emails]" value="yes" <?php checked($s['show_in_order_emails'],'yes'); ?>> Add link to customer order emails</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[attach_pdf_receipt]" value="yes" <?php checked($s['attach_pdf_receipt'],'yes'); ?>> Attach simple PDF receipt to customer email</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[change_order_status_on_submit]" value="yes" <?php checked($s['change_order_status_on_submit'],'yes'); ?>> Change WooCommerce order status to <strong>Withdrawal requested</strong> after submission</label></td></tr>
+        <tr><th>Withdrawal availability by role</th><td><fieldset><legend class="screen-reader-text"><span>Withdrawal availability by role</span></legend><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[role_availability_mode]" value="all" <?php checked($s['role_availability_mode'],'all'); ?>> All roles can withdraw</label><br><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[role_availability_mode]" value="include" <?php checked($s['role_availability_mode'],'include'); ?>> Only selected roles can withdraw</label><br><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[role_availability_mode]" value="exclude" <?php checked($s['role_availability_mode'],'exclude'); ?>> Selected roles cannot withdraw</label><p class="description">Guests are handled separately by the existing guest lookup setting. Role rules apply to logged-in customers and affect buttons, links, direct form access, and submission.</p><?php foreach($role_options as $role_key=>$role_label){ echo '<label style="display:block"><input type="checkbox" name="'.esc_attr(self::OPTION_KEY).'[role_availability_roles][]" value="'.esc_attr($role_key).'" '.checked(in_array($role_key,$selected_roles,true),true,false).'> '.esc_html($role_label).' <code>'.esc_html($role_key).'</code></label>'; } ?><p class="description">Custom roles such as registered partners, wholesale customers, B2B accounts, or partner roles appear here automatically when registered by WordPress, WooCommerce, or another plugin. For users with multiple roles, include mode allows access if any role is selected; exclude mode blocks access if any role is selected.</p></fieldset></td></tr>
         <tr><th>Excluded products</th><td><input type="text" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[excluded_product_ids]" value="<?php echo esc_attr($s['excluded_product_ids']); ?>"><p class="description">Comma-separated product or variation IDs.</p></td></tr>
         <tr><th>Excluded categories</th><td><?php if(!is_wp_error($cats)){ foreach($cats as $cat){ echo '<label style="display:block"><input type="checkbox" name="'.esc_attr(self::OPTION_KEY).'[excluded_category_ids][]" value="'.esc_attr($cat->term_id).'" '.checked(in_array((int)$cat->term_id,(array)$s['excluded_category_ids'],true),true,false).'> '.esc_html($cat->name).'</label>'; } } ?></td></tr>
         <tr><th>Excluded product types</th><td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[exclude_virtual]" value="yes" <?php checked($s['exclude_virtual'],'yes'); ?>> Virtual</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[exclude_downloadable]" value="yes" <?php checked($s['exclude_downloadable'],'yes'); ?>> Downloadable</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[exclude_external]" value="yes" <?php checked($s['exclude_external'],'yes'); ?>> External/Affiliate</label></td></tr>
