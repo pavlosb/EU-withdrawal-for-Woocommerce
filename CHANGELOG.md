@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.5.5 - Testing build
+
+### New feature
+
+- Added role-based withdrawal availability settings.
+- Merchants can now choose whether:
+  - all roles can withdraw,
+  - only selected roles can withdraw,
+  - or selected roles are excluded from withdrawal.
+- Supports custom WordPress/WooCommerce roles such as registered partner, B2B, wholesale or partner-type roles.
+
+### Frontend behavior
+
+- Withdrawal button can be hidden from My Account > Orders for disallowed roles.
+- Withdrawal button can be hidden from order details for disallowed roles.
+- Shortcode withdrawal buttons respect the same role restrictions.
+- Direct form access/submission is blocked for disallowed roles.
+
+### Improvements
+
+- Preserves default behavior after upgrade.
+- Guest behavior remains handled separately according to existing settings.
+- Role settings are sanitized and validated.
+- Admin/shop manager workflow remains unaffected.
+
 ## 0.5.4 - Testing build
 
 ### New features

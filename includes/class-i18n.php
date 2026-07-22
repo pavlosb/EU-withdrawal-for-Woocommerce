@@ -2,7 +2,7 @@
 if (!defined('ABSPATH')) { exit; }
 
 abstract class EU_Withdrawal_Button_I18n {
-    const VERSION = '0.5.4';
+    const VERSION = '0.5.5';
     const CPT = 'ewb_withdrawal';
     const OPTION_KEY = 'ewb_settings';
     const NONCE_ACTION = 'ewb_submit_withdrawal';
