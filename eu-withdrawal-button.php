@@ -2,7 +2,7 @@
 /**
  * Plugin Name: EU Withdrawal Button for WooCommerce
  * Description: Online withdrawal/cancel contract flow for WooCommerce with multilingual labels, order-aware forms, eligibility rules, proof hash, PDF receipt and admin workflow.
- * Version: 0.5.4
+ * Version: 0.5.5
  * Author: INLINE Technology Consultants
  * Text Domain: eu-withdrawal-button
  * Requires PHP: 7.4
