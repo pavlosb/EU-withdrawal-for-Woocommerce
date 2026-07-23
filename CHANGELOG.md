@@ -1,10 +1,31 @@
 # Changelog
 
+## 0.5.6 - Testing build
+
+### New / improved
+
+- Added a dedicated CSS class for the non-eligible order notice.
+- Added backend customization for the non-eligible order message.
+- Preserved multilingual/default fallback behavior for the non-eligible message.
+- Hid the normal post-submission helper text when the order is not eligible, avoiding conflicting instructions.
+
+### Styling
+
+- Site admins can now target the non-eligible notice with custom CSS, for example `.ewb-notice--not-eligible`.
+
+### Compatibility
+
+- No change to withdrawal eligibility rules.
+- No change to role-based withdrawal availability.
+- No change to email templates.
+- No change to PDF behavior.
+- No change to privacy export/erase behavior.
+- No change to WPML/Polylang behavior except message fallback support.
+
 ## 0.5.5 - Testing build
 
 ### New feature
 
-- Added configurable multilingual non-eligible order messaging with a stable frontend notice class.
 - Added role-based withdrawal availability settings.
 - Merchants can now choose whether:
   - all roles can withdraw,
