@@ -26,6 +26,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'hide_form_heading' => 'no',
             'before_form_text' => '',
             'after_form_text' => '',
+            'non_eligible_messages' => self::default_non_eligible_messages(),
             'email_templates' => self::default_email_templates(),
             'change_order_status_on_submit' => 'yes',
             'button_class_order_details' => '',
@@ -44,6 +45,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
     protected function get_settings(): array {
         $settings = wp_parse_args(get_option(self::OPTION_KEY, []), self::default_settings_static());
         $settings['email_templates'] = self::normalize_email_templates($settings['email_templates'] ?? []);
+        $settings['non_eligible_messages'] = self::normalize_non_eligible_messages($settings['non_eligible_messages'] ?? []);
         $mode = sanitize_key($settings['role_availability_mode'] ?? 'all');
         $settings['role_availability_mode'] = in_array($mode, ['all','include','exclude'], true) ? $mode : 'all';
         $settings['role_availability_roles'] = $this->sanitize_availability_roles($settings['role_availability_roles'] ?? []);
@@ -91,6 +93,14 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         return $templates;
     }
 
+    protected static function default_non_eligible_messages(): array {
+        $messages = [];
+        foreach(self::email_template_languages() as $lang=>$label){
+            $messages[$lang] = '';
+        }
+        return $messages;
+    }
+
     protected static function normalize_email_templates($templates): array {
         $normalized = self::default_email_templates();
         $templates = is_array($templates) ? $templates : [];
@@ -99,6 +109,17 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
                 if(isset($templates[$field]) && is_array($templates[$field]) && isset($templates[$field][$lang])){
                     $normalized[$field][$lang] = (string)$templates[$field][$lang];
                 }
+            }
+        }
+        return $normalized;
+    }
+
+    protected static function normalize_non_eligible_messages($messages): array {
+        $normalized = self::default_non_eligible_messages();
+        $messages = is_array($messages) ? $messages : [];
+        foreach($normalized as $lang=>$default){
+            if(isset($messages[$lang])){
+                $normalized[$lang] = (string)$messages[$lang];
             }
         }
         return $normalized;
@@ -136,6 +157,15 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
                 $value = $templates[$field][$lang] ?? '';
                 $sanitized[$field][$lang] = $config['type'] === 'subject' ? self::sanitize_email_template_subject($value) : self::sanitize_email_template_body($value);
             }
+        }
+        return $sanitized;
+    }
+
+    protected static function sanitize_non_eligible_messages($messages): array {
+        $messages = is_array($messages) ? $messages : [];
+        $sanitized = self::default_non_eligible_messages();
+        foreach($sanitized as $lang=>$default){
+            $sanitized[$lang] = sanitize_textarea_field(wp_unslash($messages[$lang] ?? ''));
         }
         return $sanitized;
     }
@@ -219,6 +249,13 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         return self::sanitize_helper_text($text);
     }
 
+    protected function non_eligible_order_message(): string {
+        $settings = $this->get_settings();
+        $messages = self::normalize_non_eligible_messages($settings['non_eligible_messages'] ?? []);
+        $message = trim((string)($messages[$this->current_lang()] ?? ''));
+        return $message !== '' ? $message : $this->t('not_eligible');
+    }
+
     protected function availability_role_options(): array {
         $roles = wp_roles();
         if(!$roles || empty($roles->roles) || !is_array($roles->roles)){ return []; }
@@ -293,6 +330,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'hide_form_heading'=>!empty($input['hide_form_heading'])?'yes':'no',
             'before_form_text'=>self::sanitize_helper_text(wp_unslash($input['before_form_text'] ?? '')),
             'after_form_text'=>self::sanitize_helper_text(wp_unslash($input['after_form_text'] ?? '')),
+            'non_eligible_messages'=>self::sanitize_non_eligible_messages($input['non_eligible_messages'] ?? []),
             'email_templates'=>self::sanitize_email_templates($input['email_templates'] ?? []),
             'change_order_status_on_submit'=>!empty($input['change_order_status_on_submit'])?'yes':'no',
         ];
@@ -312,6 +350,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
     protected function render_settings_fields(): void {
         $s=$this->get_settings(); $pages=get_pages(['sort_column'=>'post_title']); $trans=$this->translations(); $cats=get_terms(['taxonomy'=>'product_cat','hide_empty'=>false]);
         $email_templates = self::normalize_email_templates($s['email_templates'] ?? []);
+        $non_eligible_messages = self::normalize_non_eligible_messages($s['non_eligible_messages'] ?? []);
         $role_options = $this->availability_role_options();
         $selected_roles = $this->sanitize_availability_roles($s['role_availability_roles'] ?? []);
         $customer_placeholders = ['{request_id}','{order_number}','{customer_name}','{customer_email}','{products}','{submitted_at}','{withdrawal_status}','{reference_code}','{withdrawal_url}','{site_name}'];
@@ -327,6 +366,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         <tr><th>Withdrawal action label</th><td><input type="text" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[withdrawal_action_label]" value="<?php echo esc_attr($s['withdrawal_action_label'] ?: ($s['button_label_override'] ?? '')); ?>"><p class="description">Shown on customer-facing withdrawal links and buttons. Leave empty to use the translated default label.</p></td></tr>
         <tr><th>Email templates</th><td><p class="description">Optional multilingual templates for withdrawal request emails. Leave any field empty to use the current built-in translated default for that language.</p><p><strong>Customer placeholders:</strong> <?php foreach($customer_placeholders as $placeholder){ echo '<code>'.esc_html($placeholder).'</code> '; } ?></p><p><strong>Admin placeholders:</strong> <?php foreach($admin_placeholders as $placeholder){ echo '<code>'.esc_html($placeholder).'</code> '; } ?></p><p class="description">Customer templates do not expose the raw proof hash; use <code>{reference_code}</code> for customer-facing references. Admin/internal templates may use <code>{proof_hash}</code>. Bodies allow basic email HTML only; scripts, iframes, event-handler attributes, styles, and unsafe HTML are stripped.</p><?php foreach(self::email_template_languages() as $lang=>$label){ ?><div style="margin:1em 0;padding:1em;border:1px solid #ccd0d4;"><h4><?php echo esc_html($label.' ('.$lang.')'); ?></h4><p><label>Customer confirmation subject<br><input type="text" class="large-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[email_templates][customer_subject][<?php echo esc_attr($lang); ?>]" value="<?php echo esc_attr($email_templates['customer_subject'][$lang]); ?>" placeholder="<?php echo esc_attr($trans[$lang]['email_subject'] ?? $this->t('email_subject')); ?>"></label></p><p><label>Customer confirmation body<br><textarea class="large-text" rows="5" name="<?php echo esc_attr(self::OPTION_KEY); ?>[email_templates][customer_body][<?php echo esc_attr($lang); ?>]" placeholder="<?php echo esc_attr('Leave empty to use the built-in translated customer receipt.'); ?>"><?php echo esc_textarea($email_templates['customer_body'][$lang]); ?></textarea></label></p><p><label>Admin notification subject<br><input type="text" class="large-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[email_templates][admin_subject][<?php echo esc_attr($lang); ?>]" value="<?php echo esc_attr($email_templates['admin_subject'][$lang]); ?>" placeholder="<?php echo esc_attr(($trans[$lang]['admin_new_subject'] ?? $this->t('admin_new_subject')).' {order_number}'); ?>"></label></p><p><label>Admin notification body<br><textarea class="large-text" rows="5" name="<?php echo esc_attr(self::OPTION_KEY); ?>[email_templates][admin_body][<?php echo esc_attr($lang); ?>]" placeholder="<?php echo esc_attr('Leave empty to use the built-in translated admin notification.'); ?>"><?php echo esc_textarea($email_templates['admin_body'][$lang]); ?></textarea></label></p></div><?php } ?></td></tr>
         <tr><th>Form display and helper text</th><td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[hide_form_heading]" value="yes" <?php checked($s['hide_form_heading'],'yes'); ?>> Hide plugin form heading</label><p class="description">Use this if your page/theme already displays a suitable page heading.</p><p><label>Before form text<br><textarea class="large-text" rows="4" name="<?php echo esc_attr(self::OPTION_KEY); ?>[before_form_text]" placeholder="<?php echo esc_attr($this->default_form_helper_text('before')); ?>"><?php echo esc_textarea($s['before_form_text'] ?? ''); ?></textarea></label></p><p class="description">Shown above the withdrawal form. Leave empty to use the localized default helper text.</p><p><label>After form text<br><textarea class="large-text" rows="4" name="<?php echo esc_attr(self::OPTION_KEY); ?>[after_form_text]" placeholder="<?php echo esc_attr($this->default_form_helper_text('after')); ?>"><?php echo esc_textarea($s['after_form_text'] ?? ''); ?></textarea></label></p><p class="description">Shown below the withdrawal form. Basic safe formatting is allowed; scripts and unsafe HTML are stripped.</p></td></tr>
+        <tr><th>Non-eligible order message</th><td><p class="description">Optional customer-facing message shown when an order is not currently eligible for online withdrawal. Leave a language empty to use the built-in translated default. The notice uses <code>ewb-notice ewb-notice--not-eligible</code> so site CSS can style it.</p><?php foreach(self::email_template_languages() as $lang=>$label){ echo '<p><label>'.esc_html($label.' ('.$lang.')').'<br><textarea class="large-text" rows="3" name="'.esc_attr(self::OPTION_KEY).'[non_eligible_messages]['.esc_attr($lang).']" placeholder="'.esc_attr($trans[$lang]['not_eligible'] ?? $this->t('not_eligible')).'">'.esc_textarea($non_eligible_messages[$lang]).'</textarea></label></p>'; } ?></td></tr>
         <tr><th>Custom button classes</th><td><p class="description">Optional CSS classes are appended after the default WooCommerce/WordPress button classes. Use class names only; HTML, scripts, inline styles, and attributes are stripped.</p><?php foreach(self::custom_button_class_fields() as $key=>$label){ echo '<p><label>'.esc_html($label).'<br><input type="text" class="regular-text" name="'.esc_attr(self::OPTION_KEY).'['.esc_attr($key).']" value="'.esc_attr($s[$key] ?? '').'" placeholder="my-custom-class"></label></p>'; } ?><p class="description">My Account &gt; Orders action classes are generated by the WooCommerce account orders template, so the plugin leaves those default template classes unchanged.</p></td></tr>
         <tr><th>Eligibility window</th><td><input type="number" min="0" step="1" name="<?php echo esc_attr(self::OPTION_KEY); ?>[eligibility_days]" value="<?php echo esc_attr($s['eligibility_days']); ?>"> days <p class="description">0 disables date limit. Default EU withdrawal period is commonly 14 days; confirm legal wording with counsel.</p></td></tr>
         <tr><th>Allowed order statuses</th><td><?php foreach(wc_get_order_statuses() as $key=>$label){ $key=str_replace('wc-','',$key); echo '<label style="display:block"><input type="checkbox" name="'.esc_attr(self::OPTION_KEY).'[allowed_statuses][]" value="'.esc_attr($key).'" '.checked(in_array($key,(array)$s['allowed_statuses'],true),true,false).'> '.esc_html($label).'</label>'; } ?></td></tr>

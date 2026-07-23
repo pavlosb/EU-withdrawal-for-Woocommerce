@@ -88,6 +88,12 @@ Merchants can control logged-in customer access under **WooCommerce > Settings >
 
 The role rule hides plugin-generated customer-facing withdrawal links/buttons and is also enforced during direct form access, review, and submission.
 
+## Non-eligible order message
+
+Merchants can customize the customer-facing message shown when an order is not currently eligible for online withdrawal. The setting supports separate English, Greek, Spanish, and Hungarian messages; empty fields fall back to the built-in translated defaults.
+
+The frontend notice uses `ewb-notice ewb-notice--not-eligible` in addition to the existing message class so site admins can target it with custom CSS without the plugin hard-coding alert colors.
+
 ## WPML / multilingual notes
 
 - Customer-facing languages currently supported: `en`, `el`, `es`, `hu`.

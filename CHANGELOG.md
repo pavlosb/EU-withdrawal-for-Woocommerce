@@ -4,6 +4,7 @@
 
 ### New feature
 
+- Added configurable multilingual non-eligible order messaging with a stable frontend notice class.
 - Added role-based withdrawal availability settings.
 - Merchants can now choose whether:
   - all roles can withdraw,
