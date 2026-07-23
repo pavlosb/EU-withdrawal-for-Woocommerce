@@ -63,6 +63,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         $message='';
         $render_form = true;
         $order=$this->resolve_order_from_request();
+        $hide_after_helper = $order instanceof WC_Order && !$this->is_order_eligible($order);
 
         if($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['ewb_submit'])){
             $message=$this->handle_submission();
@@ -84,7 +85,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         $this->render_form_helper_text('before');
         echo $message;
         if($render_form){ $this->render_form($order); }
-        $this->render_form_helper_text('after');
+        if(!$hide_after_helper){ $this->render_form_helper_text('after'); }
         echo '</div>';
         return ob_get_clean();
     }
@@ -123,7 +124,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
             echo '<input type="hidden" name="ewb_order_id" value="'.esc_attr($order->get_id()).'"><input type="hidden" name="ewb_order_key" value="'.esc_attr($order->get_order_key()).'">';
             if(!$this->is_order_eligible($order)){
                 $can_submit = false;
-                echo '<div class="ewb-message">'.esc_html($this->t('not_eligible')).'</div>';
+                echo '<div class="ewb-message ewb-notice ewb-notice--not-eligible">'.esc_html($this->non_eligible_order_message()).'</div>';
             } else {
                 $items=$this->eligible_items($order);
                 if($items){

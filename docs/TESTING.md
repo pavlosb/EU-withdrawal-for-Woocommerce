@@ -30,6 +30,17 @@ Use this checklist on a staging WooCommerce site before installing the plugin on
 - Ineligible order shows a clear message.
 - Excluded products are not selectable or are clearly marked.
 
+## Non-eligible order messaging
+
+- Eligible order: after-form helper text is visible and the non-eligible notice is not shown.
+- Non-eligible order: notice is shown with `ewb-notice ewb-notice--not-eligible`.
+- Non-eligible order: after-form helper text is hidden to avoid duplicate/confusing next-step messaging.
+- Custom backend non-eligible message overrides the built-in default for the active language.
+- Empty backend non-eligible message falls back to the built-in default translation.
+- Greek default/custom text renders correctly.
+- Existing English, Spanish, and Hungarian fallback messages still work.
+- Custom CSS can target `.ewb-notice--not-eligible`.
+
 ## Logged-in customer flow
 
 - Customer sees withdrawal action in My Account > Orders.
