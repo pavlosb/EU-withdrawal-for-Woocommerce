@@ -2,7 +2,7 @@
 if (!defined('ABSPATH')) { exit; }
 
 abstract class EU_Withdrawal_Button_I18n {
-    const VERSION = '0.5.5';
+    const VERSION = '0.5.6';
     const CPT = 'ewb_withdrawal';
     const OPTION_KEY = 'ewb_settings';
     const NONCE_ACTION = 'ewb_submit_withdrawal';
@@ -72,4 +72,3 @@ abstract class EU_Withdrawal_Button_I18n {
         return $all[$lang][$key] ?? $all['en'][$key] ?? $key;
     }
 }
-
