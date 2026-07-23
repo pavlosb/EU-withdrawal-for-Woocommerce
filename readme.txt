@@ -4,7 +4,7 @@ Tags: woocommerce, withdrawal, returns, eu, wpml
 Requires at least: 5.8
 Tested up to: 6.8
 Requires PHP: 7.4
-Stable tag: 0.5.5
+Stable tag: 0.5.6
 License: GPLv2 or later
 
 EU-style online withdrawal / cancel contract flow for WooCommerce.
@@ -13,6 +13,11 @@ EU-style online withdrawal / cancel contract flow for WooCommerce.
 Adds a multilingual online withdrawal form for WooCommerce orders, customer confirmation email, admin notification, admin workflow records, CSV export, PDF receipt, guest order lookup, eligibility/exclusion rules, and optional WooCommerce order status update to "Withdrawal requested".
 
 == Changelog ==
+= 0.5.6 =
+* New / improved: added a dedicated CSS class for the non-eligible order notice; added backend customization for the non-eligible order message; preserved multilingual/default fallback behavior for the non-eligible message; hid the normal post-submission helper text when the order is not eligible, avoiding conflicting instructions.
+* Styling: site admins can target the non-eligible notice with custom CSS, for example `.ewb-notice--not-eligible`.
+* Compatibility: no change to withdrawal eligibility rules, role-based withdrawal availability, email templates, PDF behavior, privacy export/erase behavior, or WPML/Polylang behavior except message fallback support.
+
 = 0.5.5 =
 * New feature: added role-based withdrawal availability settings. Merchants can choose whether all roles can withdraw, only selected roles can withdraw, or selected roles are excluded from withdrawal.
 * Supports custom WordPress/WooCommerce roles such as registered partner, B2B, wholesale or partner-type roles.
