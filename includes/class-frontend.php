@@ -2,6 +2,8 @@
 if (!defined('ABSPATH')) { exit; }
 
 abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails {
+    protected $last_validation_error_code = '';
+
     public function enqueue_styles(): void {
         $mode = $this->get_settings()['css_mode'];
         if ($mode === 'none') { return; }
@@ -13,6 +15,8 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
     protected function button_classes(string $context,string $extra=''): string { return $this->frontend_button_classes($context, trim('woocommerce-button button '.$extra)); }
     protected function render_form_heading(): void { if($this->get_settings()['hide_form_heading']!=='yes'){ echo '<h2 class="ewb-form-heading">'.esc_html($this->t('form_title')).'</h2>'; } }
     protected function render_form_helper_text(string $position): void { $text=$this->form_helper_text($position); if($text!==''){ echo '<div class="ewb-form-helper ewb-form-helper-'.esc_attr($position).'">'.wp_kses_post(wpautop($text)).'</div>'; } }
+    protected function guest_role_not_eligible_notice(): string { return '<div class="ewb-message ewb-notice ewb-notice--role-not-eligible">'.esc_html($this->guest_role_not_eligible_message()).'</div>'; }
+    protected function validation_error_html(string $message): string { $classes = $this->last_validation_error_code === 'guest_role_not_eligible' ? 'ewb-message ewb-notice ewb-notice--role-not-eligible' : 'ewb-message'; return '<div class="'.esc_attr($classes).'">'.esc_html($message).'</div>'; }
     protected function translated_page_id(int $page_id): int { return $this->translated_page_id_for_lang($page_id, $this->current_lang()); }
     protected function page_url($order=null): string {
         $url = $this->withdrawal_page_url_for_lang($this->current_lang());
@@ -55,6 +59,22 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         return null;
     }
 
+    protected function posted_withdrawal_email(): string {
+        if(isset($_POST['ewb_customer_email'])){ return sanitize_email(wp_unslash($_POST['ewb_customer_email'])); }
+        if(isset($_POST['ewb_email'])){ return sanitize_email(wp_unslash($_POST['ewb_email'])); }
+        return '';
+    }
+
+    protected function guest_role_email_from_context($order=null): string {
+        if(is_user_logged_in()){ return ''; }
+        if($order instanceof WC_Order){ return sanitize_email($order->get_billing_email()); }
+        return $this->posted_withdrawal_email();
+    }
+
+    protected function guest_email_role_is_restricted(string $email): bool {
+        return $email !== '' && is_email($email) && !$this->guest_email_user_can_withdraw_by_role($email);
+    }
+
     public function shortcode_form(): string {
         if(!class_exists('WooCommerce')){ ob_start(); echo '<div class="ewb-form-wrap">'; $this->render_form_heading(); echo '<div class="ewb-message">WooCommerce is required.</div></div>'; return ob_get_clean(); }
         if(!$this->current_user_can_withdraw_by_role()){
@@ -63,20 +83,27 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         $message='';
         $render_form = true;
         $order=$this->resolve_order_from_request();
-        $hide_after_helper = $order instanceof WC_Order && !$this->is_order_eligible($order);
+        $guest_role_blocked = $this->guest_email_role_is_restricted($this->guest_role_email_from_context($order));
+        $hide_after_helper = $guest_role_blocked || ($order instanceof WC_Order && !$this->is_order_eligible($order));
 
         if($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['ewb_submit'])){
             $message=$this->handle_submission();
             $render_form = false;
         } elseif($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['ewb_review'])){
             $message=$this->render_review_step();
-            $render_form = (strpos($message, '<form') === false);
+            $render_form = $guest_role_blocked ? false : (strpos($message, '<form') === false);
         } elseif($_SERVER['REQUEST_METHOD']==='POST' && isset($_POST['ewb_lookup'])){
             if(!isset($_POST['ewb_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['ewb_nonce'])), self::NONCE_ACTION)){
                 $message = '<div class="ewb-message">'.esc_html($this->t('security_failed')).'</div>';
             } elseif(!$order){
                 $message = '<div class="ewb-message">'.esc_html($this->t('order_not_verified')).'</div>';
+            } elseif($guest_role_blocked){
+                $message = $this->guest_role_not_eligible_notice();
+                $render_form = false;
             }
+        } elseif($guest_role_blocked){
+            $message = $this->guest_role_not_eligible_notice();
+            $render_form = false;
         }
 
         ob_start();
@@ -122,7 +149,10 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
         $can_submit = true;
         if($order instanceof WC_Order){
             echo '<input type="hidden" name="ewb_order_id" value="'.esc_attr($order->get_id()).'"><input type="hidden" name="ewb_order_key" value="'.esc_attr($order->get_order_key()).'">';
-            if(!$this->is_order_eligible($order)){
+            if($this->guest_email_role_is_restricted($this->guest_role_email_from_context($order))){
+                $can_submit = false;
+                echo $this->guest_role_not_eligible_notice();
+            } elseif(!$this->is_order_eligible($order)){
                 $can_submit = false;
                 echo '<div class="ewb-message ewb-notice ewb-notice--not-eligible">'.esc_html($this->non_eligible_order_message()).'</div>';
             } else {
@@ -174,15 +204,17 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
     }
 
     protected function validate_data(array $d): string {
+        $this->last_validation_error_code = '';
         if(!$this->current_user_can_withdraw_by_role()){ return $this->withdrawal_role_unavailable_message(); }
         if(!isset($_POST['ewb_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['ewb_nonce'])), self::NONCE_ACTION)){ return $this->t('security_failed'); }
         if(!$d['name'] || !is_email($d['email']) || !$d['order_number'] || !$d['products'] || !$d['declaration']){ return $this->t('required_fields'); }
+        if($this->guest_email_role_is_restricted($d['email'])){ $this->last_validation_error_code = 'guest_role_not_eligible'; return $this->guest_role_not_eligible_message(); }
         if($d['order_id']){ $order=wc_get_order($d['order_id']); if(!$order || !hash_equals($order->get_order_key(),$d['order_key']) || !$this->is_order_eligible($order)){ return $this->t('order_not_verified'); } }
         return '';
     }
 
     protected function render_review_step(): string {
-        $d=$this->collect_posted_data(); $err=$this->validate_data($d); if($err){ return '<div class="ewb-message">'.esc_html($err).'</div>'; }
+        $d=$this->collect_posted_data(); $err=$this->validate_data($d); if($err){ return $this->validation_error_html($err); }
         ob_start(); echo '<form class="ewb-form" method="post"><div class="ewb-message"><h3>'.esc_html($this->t('review_title')).'</h3></div><div class="ewb-confirmation-summary">';
         echo '<dl class="ewb-confirmation-details"><dt>'.esc_html($this->t('name')).':</dt><dd>'.esc_html($d['name']).'</dd><dt>'.esc_html($this->t('email')).':</dt><dd>'.esc_html($d['email']).'</dd><dt>'.esc_html($this->t('order')).':</dt><dd>'.esc_html($d['order_number']).'</dd></dl>';
         echo '<div class="ewb-confirmation-products"><strong>'.esc_html($this->t('products')).':</strong><ul>'; foreach($d['products'] as $p){ echo '<li>'.esc_html($p).'</li>'; } echo '</ul></div><div class="ewb-confirmation-declaration"><strong>'.esc_html($this->t('declaration_label')).':</strong><p>'.esc_html($this->t('declaration')).'</p></div></div>';
@@ -193,7 +225,7 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
     protected function handle_submission(): string {
         if(isset($_POST['ewb_products_confirmed'])){ $d=[ 'name'=>sanitize_text_field(wp_unslash($_POST['ewb_name']??'')), 'email'=>sanitize_email(wp_unslash($_POST['ewb_email']??'')), 'order_number'=>sanitize_text_field(wp_unslash($_POST['ewb_order_number']??'')), 'order_id'=>absint($_POST['ewb_order_id']??0), 'order_key'=>sanitize_text_field(wp_unslash($_POST['ewb_order_key']??'')), 'comments'=>sanitize_textarea_field(wp_unslash($_POST['ewb_comments']??'')), 'declaration'=>!empty($_POST['ewb_declaration']), 'products'=>array_map('sanitize_text_field', array_map('wp_unslash',(array)$_POST['ewb_products_confirmed'])) ]; }
         else { $d=$this->collect_posted_data(); }
-        $err=$this->validate_data($d); if($err){ return '<div class="ewb-message">'.esc_html($err).'</div>'; }
+        $err=$this->validate_data($d); if($err){ return $this->validation_error_html($err); }
         $submitted_at=current_time('mysql'); $payload=['order_number'=>$d['order_number'],'email'=>$d['email'],'products'=>$d['products'],'submitted_at'=>$submitted_at,'lang'=>$this->current_lang()]; $hash=hash('sha256', wp_json_encode($payload));
         $post_id=wp_insert_post(['post_type'=>self::CPT,'post_status'=>'publish','post_title'=>sprintf('Withdrawal request - Order %s - %s',$d['order_number'],$d['name'])], true);
         if(is_wp_error($post_id)){ return '<div class="ewb-message">Request could not be saved.</div>'; }
@@ -213,4 +245,3 @@ abstract class EU_Withdrawal_Button_Frontend extends EU_Withdrawal_Button_Emails
 
     protected function get_ip_address(): string { foreach(['HTTP_CF_CONNECTING_IP','HTTP_X_FORWARDED_FOR','REMOTE_ADDR'] as $key){ if(!empty($_SERVER[$key])){ $raw=sanitize_text_field(wp_unslash($_SERVER[$key])); return trim(explode(',',$raw)[0]); } } return ''; }
 }
-

@@ -57,7 +57,16 @@ Use this checklist on a staging WooCommerce site before installing the plugin on
 - With **Only selected roles can withdraw** and `customer` selected, confirm an unselected logged-in role cannot see plugin-generated withdrawal links/buttons and sees a friendly unavailable message on direct Withdrawal page access.
 - With **Selected roles cannot withdraw** and a custom role such as `registered_partner`, `wholesale_customer`, or a B2B/partner role selected, confirm that role cannot see plugin-generated withdrawal links/buttons and cannot submit by direct POST.
 - For a user with multiple roles, confirm include mode allows withdrawal if any user role is selected and exclude mode blocks withdrawal if any user role is selected.
-- Confirm guest lookup is controlled by the existing guest lookup setting and is not blocked by role rules.
+- Confirm true guest lookup for an email with no WordPress user account is controlled by the existing guest lookup setting and is not blocked by role rules.
+- Logged-out lookup with an email belonging to a normal `customer` account continues through the normal guest/order eligibility checks unless `customer` is explicitly restricted.
+- Logged-out lookup with an email belonging to a disallowed account role such as `registered_partner`, `wholesale_customer`, or a B2B/partner role is blocked with `ewb-notice ewb-notice--role-not-eligible`.
+- Confirm include mode and exclude mode apply to email-matched logged-out users the same way they apply to logged-in users.
+- For an email-matched user with multiple roles, confirm include mode allows withdrawal if any user role is selected and exclude mode blocks withdrawal if any user role is selected.
+- Confirm the role-not-eligible account message and generic non-eligible order message are not shown together.
+- Confirm after-form helper text is hidden when the role-not-eligible account message is shown.
+- Confirm a custom backend role-not-eligible account message overrides the built-in default, and an empty language setting falls back to the built-in default.
+- Confirm Greek role-not-eligible account message text renders correctly.
+- Confirm custom CSS can target `.ewb-notice--role-not-eligible`.
 - Confirm WooCommerce customer order emails do not show withdrawal links for registered order owners whose roles are disallowed.
 - Confirm admin/shop manager access to WooCommerce > Withdrawals, workflow actions, CSV export, and settings is not blocked by frontend role availability rules.
 - Confirm invalid or deleted roles saved in settings are ignored safely after role changes.

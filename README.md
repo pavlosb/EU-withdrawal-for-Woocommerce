@@ -83,10 +83,13 @@ Merchants can control logged-in customer access under **WooCommerce > Settings >
 - **All roles can withdraw** preserves the default/current behavior.
 - **Only selected roles can withdraw** allows logged-in users when at least one of their roles is selected.
 - **Selected roles cannot withdraw** blocks logged-in users when any of their roles is selected.
-- Guest lookup is still controlled separately by the existing guest lookup setting.
+- True guest lookup is still controlled separately by the existing guest lookup setting.
+- When a logged-out lookup or submission email belongs to an existing WordPress user, the same role rule is applied to that matched account. Allowed customer roles continue through the normal guest/order eligibility checks; disallowed partner, wholesale, B2B, or other restricted roles are blocked with a generic message.
 - Custom roles registered by WordPress, WooCommerce, membership, wholesale, B2B, or partner plugins appear automatically in the role checklist.
 
 The role rule hides plugin-generated customer-facing withdrawal links/buttons and is also enforced during direct form access, review, and submission.
+
+The role-not-eligible guest/account notice uses `ewb-notice ewb-notice--role-not-eligible` so site admins can target it with custom CSS without exposing account role details.
 
 ## Non-eligible order message
 

@@ -4,6 +4,8 @@
 
 ### New / improved
 
+- Added guest/email lookup enforcement for role-based withdrawal restrictions when the entered email belongs to an existing WordPress user account.
+- Added a separate customizable multilingual message and CSS class for email-matched accounts that are not eligible by role.
 - Added a dedicated CSS class for the non-eligible order notice.
 - Added backend customization for the non-eligible order message.
 - Preserved multilingual/default fallback behavior for the non-eligible message.
