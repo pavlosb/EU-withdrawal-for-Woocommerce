@@ -27,6 +27,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'before_form_text' => '',
             'after_form_text' => '',
             'non_eligible_messages' => self::default_non_eligible_messages(),
+            'guest_role_not_eligible_messages' => self::default_guest_role_not_eligible_messages(),
             'email_templates' => self::default_email_templates(),
             'change_order_status_on_submit' => 'yes',
             'button_class_order_details' => '',
@@ -46,6 +47,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         $settings = wp_parse_args(get_option(self::OPTION_KEY, []), self::default_settings_static());
         $settings['email_templates'] = self::normalize_email_templates($settings['email_templates'] ?? []);
         $settings['non_eligible_messages'] = self::normalize_non_eligible_messages($settings['non_eligible_messages'] ?? []);
+        $settings['guest_role_not_eligible_messages'] = self::normalize_guest_role_not_eligible_messages($settings['guest_role_not_eligible_messages'] ?? []);
         $mode = sanitize_key($settings['role_availability_mode'] ?? 'all');
         $settings['role_availability_mode'] = in_array($mode, ['all','include','exclude'], true) ? $mode : 'all';
         $settings['role_availability_roles'] = $this->sanitize_availability_roles($settings['role_availability_roles'] ?? []);
@@ -101,6 +103,15 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         return $messages;
     }
 
+    protected static function default_guest_role_not_eligible_messages(): array {
+        return [
+            'en' => 'Withdrawal requests are not available for this account. To cancel this specific order, please contact the sales department.',
+            'el' => 'Δεν είναι δυνατή η υποβολή αιτήματος ακύρωσης για τον λογαριασμό σας. Για να κάνετε ακύρωση της συγκεκριμένης παραγγελίας παρακαλούμε επικοινωνήστε με το τμήμα πωλήσεων.',
+            'es' => 'Las solicitudes de desistimiento no están disponibles para esta cuenta. Para cancelar este pedido, contacte con el departamento de ventas.',
+            'hu' => 'Ehhez a fiókhoz nem érhető el elállási kérelem. A konkrét rendelés lemondásához kérjük, vegye fel a kapcsolatot az értékesítési osztállyal.',
+        ];
+    }
+
     protected static function normalize_email_templates($templates): array {
         $normalized = self::default_email_templates();
         $templates = is_array($templates) ? $templates : [];
@@ -123,6 +134,17 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             }
         }
         return $normalized;
+    }
+
+    protected static function normalize_guest_role_not_eligible_messages($messages): array {
+        $defaults = self::default_guest_role_not_eligible_messages();
+        $messages = is_array($messages) ? $messages : [];
+        foreach($defaults as $lang=>$default){
+            if(isset($messages[$lang])){
+                $defaults[$lang] = (string)$messages[$lang];
+            }
+        }
+        return $defaults;
     }
 
     protected static function email_template_allowed_html(): array {
@@ -164,6 +186,15 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
     protected static function sanitize_non_eligible_messages($messages): array {
         $messages = is_array($messages) ? $messages : [];
         $sanitized = self::default_non_eligible_messages();
+        foreach($sanitized as $lang=>$default){
+            $sanitized[$lang] = sanitize_textarea_field(wp_unslash($messages[$lang] ?? ''));
+        }
+        return $sanitized;
+    }
+
+    protected static function sanitize_guest_role_not_eligible_messages($messages): array {
+        $messages = is_array($messages) ? $messages : [];
+        $sanitized = self::default_guest_role_not_eligible_messages();
         foreach($sanitized as $lang=>$default){
             $sanitized[$lang] = sanitize_textarea_field(wp_unslash($messages[$lang] ?? ''));
         }
@@ -256,6 +287,15 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         return $message !== '' ? $message : $this->t('not_eligible');
     }
 
+    protected function guest_role_not_eligible_message(): string {
+        $settings = $this->get_settings();
+        $messages = self::normalize_guest_role_not_eligible_messages($settings['guest_role_not_eligible_messages'] ?? []);
+        $defaults = self::default_guest_role_not_eligible_messages();
+        $lang = $this->current_lang();
+        $message = trim((string)($messages[$lang] ?? ''));
+        return $message !== '' ? $message : ($defaults[$lang] ?? $defaults['en']);
+    }
+
     protected function availability_role_options(): array {
         $roles = wp_roles();
         if(!$roles || empty($roles->roles) || !is_array($roles->roles)){ return []; }
@@ -286,6 +326,15 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         if($mode === 'include'){ return $has_match; }
         if($mode === 'exclude'){ return !$has_match; }
         return true;
+    }
+
+    protected function guest_email_user_can_withdraw_by_role(string $email): bool {
+        if(is_user_logged_in()){ return true; }
+        $email = sanitize_email($email);
+        if($email === '' || !is_email($email)){ return true; }
+        $user = get_user_by('email', $email);
+        if(!$user instanceof WP_User){ return true; }
+        return $this->user_can_withdraw_by_role((int)$user->ID);
     }
 
     protected function current_user_can_withdraw_by_role(): bool {
@@ -331,6 +380,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
             'before_form_text'=>self::sanitize_helper_text(wp_unslash($input['before_form_text'] ?? '')),
             'after_form_text'=>self::sanitize_helper_text(wp_unslash($input['after_form_text'] ?? '')),
             'non_eligible_messages'=>self::sanitize_non_eligible_messages($input['non_eligible_messages'] ?? []),
+            'guest_role_not_eligible_messages'=>self::sanitize_guest_role_not_eligible_messages($input['guest_role_not_eligible_messages'] ?? []),
             'email_templates'=>self::sanitize_email_templates($input['email_templates'] ?? []),
             'change_order_status_on_submit'=>!empty($input['change_order_status_on_submit'])?'yes':'no',
         ];
@@ -351,6 +401,7 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         $s=$this->get_settings(); $pages=get_pages(['sort_column'=>'post_title']); $trans=$this->translations(); $cats=get_terms(['taxonomy'=>'product_cat','hide_empty'=>false]);
         $email_templates = self::normalize_email_templates($s['email_templates'] ?? []);
         $non_eligible_messages = self::normalize_non_eligible_messages($s['non_eligible_messages'] ?? []);
+        $guest_role_not_eligible_messages = self::normalize_guest_role_not_eligible_messages($s['guest_role_not_eligible_messages'] ?? []);
         $role_options = $this->availability_role_options();
         $selected_roles = $this->sanitize_availability_roles($s['role_availability_roles'] ?? []);
         $customer_placeholders = ['{request_id}','{order_number}','{customer_name}','{customer_email}','{products}','{submitted_at}','{withdrawal_status}','{reference_code}','{withdrawal_url}','{site_name}'];
@@ -367,12 +418,13 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         <tr><th>Email templates</th><td><p class="description">Optional multilingual templates for withdrawal request emails. Leave any field empty to use the current built-in translated default for that language.</p><p><strong>Customer placeholders:</strong> <?php foreach($customer_placeholders as $placeholder){ echo '<code>'.esc_html($placeholder).'</code> '; } ?></p><p><strong>Admin placeholders:</strong> <?php foreach($admin_placeholders as $placeholder){ echo '<code>'.esc_html($placeholder).'</code> '; } ?></p><p class="description">Customer templates do not expose the raw proof hash; use <code>{reference_code}</code> for customer-facing references. Admin/internal templates may use <code>{proof_hash}</code>. Bodies allow basic email HTML only; scripts, iframes, event-handler attributes, styles, and unsafe HTML are stripped.</p><?php foreach(self::email_template_languages() as $lang=>$label){ ?><div style="margin:1em 0;padding:1em;border:1px solid #ccd0d4;"><h4><?php echo esc_html($label.' ('.$lang.')'); ?></h4><p><label>Customer confirmation subject<br><input type="text" class="large-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[email_templates][customer_subject][<?php echo esc_attr($lang); ?>]" value="<?php echo esc_attr($email_templates['customer_subject'][$lang]); ?>" placeholder="<?php echo esc_attr($trans[$lang]['email_subject'] ?? $this->t('email_subject')); ?>"></label></p><p><label>Customer confirmation body<br><textarea class="large-text" rows="5" name="<?php echo esc_attr(self::OPTION_KEY); ?>[email_templates][customer_body][<?php echo esc_attr($lang); ?>]" placeholder="<?php echo esc_attr('Leave empty to use the built-in translated customer receipt.'); ?>"><?php echo esc_textarea($email_templates['customer_body'][$lang]); ?></textarea></label></p><p><label>Admin notification subject<br><input type="text" class="large-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[email_templates][admin_subject][<?php echo esc_attr($lang); ?>]" value="<?php echo esc_attr($email_templates['admin_subject'][$lang]); ?>" placeholder="<?php echo esc_attr(($trans[$lang]['admin_new_subject'] ?? $this->t('admin_new_subject')).' {order_number}'); ?>"></label></p><p><label>Admin notification body<br><textarea class="large-text" rows="5" name="<?php echo esc_attr(self::OPTION_KEY); ?>[email_templates][admin_body][<?php echo esc_attr($lang); ?>]" placeholder="<?php echo esc_attr('Leave empty to use the built-in translated admin notification.'); ?>"><?php echo esc_textarea($email_templates['admin_body'][$lang]); ?></textarea></label></p></div><?php } ?></td></tr>
         <tr><th>Form display and helper text</th><td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[hide_form_heading]" value="yes" <?php checked($s['hide_form_heading'],'yes'); ?>> Hide plugin form heading</label><p class="description">Use this if your page/theme already displays a suitable page heading.</p><p><label>Before form text<br><textarea class="large-text" rows="4" name="<?php echo esc_attr(self::OPTION_KEY); ?>[before_form_text]" placeholder="<?php echo esc_attr($this->default_form_helper_text('before')); ?>"><?php echo esc_textarea($s['before_form_text'] ?? ''); ?></textarea></label></p><p class="description">Shown above the withdrawal form. Leave empty to use the localized default helper text.</p><p><label>After form text<br><textarea class="large-text" rows="4" name="<?php echo esc_attr(self::OPTION_KEY); ?>[after_form_text]" placeholder="<?php echo esc_attr($this->default_form_helper_text('after')); ?>"><?php echo esc_textarea($s['after_form_text'] ?? ''); ?></textarea></label></p><p class="description">Shown below the withdrawal form. Basic safe formatting is allowed; scripts and unsafe HTML are stripped.</p></td></tr>
         <tr><th>Non-eligible order message</th><td><p class="description">Optional customer-facing message shown when an order is not currently eligible for online withdrawal. Leave a language empty to use the built-in translated default. The notice uses <code>ewb-notice ewb-notice--not-eligible</code> so site CSS can style it.</p><?php foreach(self::email_template_languages() as $lang=>$label){ echo '<p><label>'.esc_html($label.' ('.$lang.')').'<br><textarea class="large-text" rows="3" name="'.esc_attr(self::OPTION_KEY).'[non_eligible_messages]['.esc_attr($lang).']" placeholder="'.esc_attr($trans[$lang]['not_eligible'] ?? $this->t('not_eligible')).'">'.esc_textarea($non_eligible_messages[$lang]).'</textarea></label></p>'; } ?></td></tr>
+        <tr><th>Guest account role-not-eligible message</th><td><p class="description">Optional customer-facing message shown when a logged-out lookup/submission email belongs to an existing account whose role is not eligible for withdrawal. Leave a language empty to use the built-in translated default. The notice uses <code>ewb-notice ewb-notice--role-not-eligible</code> so site CSS can style it without exposing account roles.</p><?php $guest_role_defaults = self::default_guest_role_not_eligible_messages(); foreach(self::email_template_languages() as $lang=>$label){ echo '<p><label>'.esc_html($label.' ('.$lang.')').'<br><textarea class="large-text" rows="3" name="'.esc_attr(self::OPTION_KEY).'[guest_role_not_eligible_messages]['.esc_attr($lang).']" placeholder="'.esc_attr($guest_role_defaults[$lang] ?? $guest_role_defaults['en']).'">'.esc_textarea($guest_role_not_eligible_messages[$lang]).'</textarea></label></p>'; } ?></td></tr>
         <tr><th>Custom button classes</th><td><p class="description">Optional CSS classes are appended after the default WooCommerce/WordPress button classes. Use class names only; HTML, scripts, inline styles, and attributes are stripped.</p><?php foreach(self::custom_button_class_fields() as $key=>$label){ echo '<p><label>'.esc_html($label).'<br><input type="text" class="regular-text" name="'.esc_attr(self::OPTION_KEY).'['.esc_attr($key).']" value="'.esc_attr($s[$key] ?? '').'" placeholder="my-custom-class"></label></p>'; } ?><p class="description">My Account &gt; Orders action classes are generated by the WooCommerce account orders template, so the plugin leaves those default template classes unchanged.</p></td></tr>
         <tr><th>Eligibility window</th><td><input type="number" min="0" step="1" name="<?php echo esc_attr(self::OPTION_KEY); ?>[eligibility_days]" value="<?php echo esc_attr($s['eligibility_days']); ?>"> days <p class="description">0 disables date limit. Default EU withdrawal period is commonly 14 days; confirm legal wording with counsel.</p></td></tr>
         <tr><th>Allowed order statuses</th><td><?php foreach(wc_get_order_statuses() as $key=>$label){ $key=str_replace('wc-','',$key); echo '<label style="display:block"><input type="checkbox" name="'.esc_attr(self::OPTION_KEY).'[allowed_statuses][]" value="'.esc_attr($key).'" '.checked(in_array($key,(array)$s['allowed_statuses'],true),true,false).'> '.esc_html($label).'</label>'; } ?></td></tr>
         <tr><th>Display / CSS</th><td><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[css_mode]" value="theme" <?php checked($s['css_mode'],'theme'); ?>> Minimal structural CSS, inherit site/theme styles</label><br><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[css_mode]" value="none" <?php checked($s['css_mode'],'none'); ?>> No frontend CSS</label></td></tr>
         <tr><th>Flow</th><td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[require_two_step]" value="yes" <?php checked($s['require_two_step'],'yes'); ?>> Require review/confirmation step</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[allow_guest_lookup]" value="yes" <?php checked($s['allow_guest_lookup'],'yes'); ?>> Allow guest lookup by order number + billing email</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[show_in_order_emails]" value="yes" <?php checked($s['show_in_order_emails'],'yes'); ?>> Add link to customer order emails</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[attach_pdf_receipt]" value="yes" <?php checked($s['attach_pdf_receipt'],'yes'); ?>> Attach simple PDF receipt to customer email</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[change_order_status_on_submit]" value="yes" <?php checked($s['change_order_status_on_submit'],'yes'); ?>> Change WooCommerce order status to <strong>Withdrawal requested</strong> after submission</label></td></tr>
-        <tr><th>Withdrawal availability by role</th><td><fieldset><legend class="screen-reader-text"><span>Withdrawal availability by role</span></legend><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[role_availability_mode]" value="all" <?php checked($s['role_availability_mode'],'all'); ?>> All roles can withdraw</label><br><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[role_availability_mode]" value="include" <?php checked($s['role_availability_mode'],'include'); ?>> Only selected roles can withdraw</label><br><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[role_availability_mode]" value="exclude" <?php checked($s['role_availability_mode'],'exclude'); ?>> Selected roles cannot withdraw</label><p class="description">Guests are handled separately by the existing guest lookup setting. Role rules apply to logged-in customers and affect buttons, links, direct form access, and submission.</p><?php foreach($role_options as $role_key=>$role_label){ echo '<label style="display:block"><input type="checkbox" name="'.esc_attr(self::OPTION_KEY).'[role_availability_roles][]" value="'.esc_attr($role_key).'" '.checked(in_array($role_key,$selected_roles,true),true,false).'> '.esc_html($role_label).' <code>'.esc_html($role_key).'</code></label>'; } ?><p class="description">Custom roles such as registered partners, wholesale customers, B2B accounts, or partner roles appear here automatically when registered by WordPress, WooCommerce, or another plugin. For users with multiple roles, include mode allows access if any role is selected; exclude mode blocks access if any role is selected.</p></fieldset></td></tr>
+        <tr><th>Withdrawal availability by role</th><td><fieldset><legend class="screen-reader-text"><span>Withdrawal availability by role</span></legend><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[role_availability_mode]" value="all" <?php checked($s['role_availability_mode'],'all'); ?>> All roles can withdraw</label><br><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[role_availability_mode]" value="include" <?php checked($s['role_availability_mode'],'include'); ?>> Only selected roles can withdraw</label><br><label><input type="radio" name="<?php echo esc_attr(self::OPTION_KEY); ?>[role_availability_mode]" value="exclude" <?php checked($s['role_availability_mode'],'exclude'); ?>> Selected roles cannot withdraw</label><p class="description">Guests are handled separately by the existing guest lookup setting. For logged-out lookup/submission emails that match an existing WordPress user, the same role rules are applied to that matched account without exposing role details.</p><?php foreach($role_options as $role_key=>$role_label){ echo '<label style="display:block"><input type="checkbox" name="'.esc_attr(self::OPTION_KEY).'[role_availability_roles][]" value="'.esc_attr($role_key).'" '.checked(in_array($role_key,$selected_roles,true),true,false).'> '.esc_html($role_label).' <code>'.esc_html($role_key).'</code></label>'; } ?><p class="description">Custom roles such as registered partners, wholesale customers, B2B accounts, or partner roles appear here automatically when registered by WordPress, WooCommerce, or another plugin. For users with multiple roles, include mode allows access if any role is selected; exclude mode blocks access if any role is selected.</p></fieldset></td></tr>
         <tr><th>Excluded products</th><td><input type="text" class="regular-text" name="<?php echo esc_attr(self::OPTION_KEY); ?>[excluded_product_ids]" value="<?php echo esc_attr($s['excluded_product_ids']); ?>"><p class="description">Comma-separated product or variation IDs.</p></td></tr>
         <tr><th>Excluded categories</th><td><?php if(!is_wp_error($cats)){ foreach($cats as $cat){ echo '<label style="display:block"><input type="checkbox" name="'.esc_attr(self::OPTION_KEY).'[excluded_category_ids][]" value="'.esc_attr($cat->term_id).'" '.checked(in_array((int)$cat->term_id,(array)$s['excluded_category_ids'],true),true,false).'> '.esc_html($cat->name).'</label>'; } } ?></td></tr>
         <tr><th>Excluded product types</th><td><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[exclude_virtual]" value="yes" <?php checked($s['exclude_virtual'],'yes'); ?>> Virtual</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[exclude_downloadable]" value="yes" <?php checked($s['exclude_downloadable'],'yes'); ?>> Downloadable</label><br><label><input type="checkbox" name="<?php echo esc_attr(self::OPTION_KEY); ?>[exclude_external]" value="yes" <?php checked($s['exclude_external'],'yes'); ?>> External/Affiliate</label></td></tr>
@@ -402,4 +454,3 @@ abstract class EU_Withdrawal_Button_Settings extends EU_Withdrawal_Button_I18n {
         echo '<div class="wrap"><h1>EU Withdrawal Button Settings</h1><p><a class="button button-primary" href="'.esc_url($this->settings_url()).'">Open WooCommerce EU Withdrawal settings</a></p></div>';
     }
 }
-
